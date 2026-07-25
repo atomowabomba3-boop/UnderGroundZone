@@ -1,15 +1,13 @@
-// =========================
-// CONFIG
-// =========================
-
 const API = "";
 
 let userId = null;
 
 
+
 // =========================
-// TELEGRAM MINI APP
+// TELEGRAM
 // =========================
+
 
 if(window.Telegram && Telegram.WebApp){
 
@@ -31,13 +29,13 @@ if(window.Telegram && Telegram.WebApp){
 
 
 
-// TESTOWY USER JEŻELI NIE MA TELEGRAMA
-
 if(!userId){
 
     userId = 123456;
 
 }
+
+
 
 
 
@@ -48,14 +46,18 @@ if(!userId){
 
 async function start(){
 
-
     await loadUser();
-
 
     openHome();
 
-
 }
+
+
+
+start();
+
+
+
 
 
 
@@ -68,12 +70,12 @@ async function start(){
 async function loadUser(){
 
 
-    let response = await fetch(
-        API + "/user/" + userId
+    let res = await fetch(
+        API+"/user/"+userId
     );
 
 
-    let data = await response.json();
+    let data = await res.json();
 
 
 
@@ -99,6 +101,8 @@ async function loadUser(){
 
 
 
+
+
 // =========================
 // HOME
 // =========================
@@ -118,10 +122,21 @@ document.getElementById("content").innerHTML = `
 </h1>
 
 
-<p>
-Welcome to UndergroundZone
-</p>
+<h2>
+💰 Current Giveaway
+</h2>
 
+
+
+<div id="giveaway">
+
+Loading...
+
+</div>
+
+
+
+<br>
 
 
 <button onclick="openShop()">
@@ -140,9 +155,9 @@ Welcome to UndergroundZone
 
 
 
-<button onclick="openGiveaways()">
+<button onclick="openProfile()">
 
-🎁 Giveaways
+👤 Profile
 
 </button>
 
@@ -154,7 +169,137 @@ Welcome to UndergroundZone
 `;
 
 
+
+loadGiveaway();
+
+
 }
+
+
+
+
+
+
+
+// =========================
+// GIVEAWAY
+// =========================
+
+
+async function loadGiveaway(){
+
+
+let res = await fetch(
+API+"/giveaway"
+);
+
+
+let data = await res.json();
+
+
+
+let box=document.getElementById(
+"giveaway"
+);
+
+
+
+if(!data.active){
+
+
+box.innerHTML=`
+
+<p>
+No active giveaway
+</p>
+
+`;
+
+return;
+
+}
+
+
+
+
+box.innerHTML=`
+
+<div class="card">
+
+
+<h2>
+💰 $${data.prize}
+</h2>
+
+
+<p>
+👥 Participants:
+${data.participants}
+</p>
+
+
+<p>
+⏳ Ends:
+${data.end}
+</p>
+
+
+<button onclick="joinGiveaway()">
+
+🎁 JOIN GIVEAWAY
+
+</button>
+
+
+</div>
+
+`;
+
+
+
+}
+
+
+
+
+
+
+async function joinGiveaway(){
+
+
+let res=await fetch(
+
+API+
+"/join-giveaway/"
++
+userId,
+
+{
+
+method:"POST"
+
+}
+
+);
+
+
+
+let data=await res.json();
+
+
+
+alert(data.message);
+
+
+
+loadUser();
+
+
+loadGiveaway();
+
+
+}
+
 
 
 
@@ -167,21 +312,19 @@ Welcome to UndergroundZone
 // =========================
 
 
-
 async function openShop(){
 
 
-let response = await fetch(
-API + "/ebooks"
+let res=await fetch(
+API+"/ebooks"
 );
 
 
-let ebooks = await response.json();
+let books=await res.json();
 
 
 
-let html = `
-
+let html=`
 
 <div class="box">
 
@@ -190,72 +333,57 @@ let html = `
 📚 Ebook Store
 </h2>
 
-
-
 `;
 
 
 
-for(let id in ebooks){
+for(let id in books){
 
 
-let book = ebooks[id];
+let b=books[id];
 
 
 
-html += `
+html+=`
+
+<div class="card">
 
 
-<div class="card ebook-card">
-
-
-<img
-
-src="${book.image}"
-
-class="ebook-image"
-
-
->
-
+<img class="ebook-image"
+src="${b.image}">
 
 
 <h3>
-${book.name}
+${b.name}
 </h3>
 
 
 <p>
-💰 ${book.price} USD
+💰 ${b.price} USD
 </p>
 
 
 <p>
-🎟️ +${book.tickets} tickets
+🎟️ +${b.tickets} tickets
 </p>
-
 
 
 <button onclick="buy('${id}')">
 
-💳 Buy
+💳 BUY
 
 </button>
 
 
-
 </div>
 
-
 `;
-
-
 
 }
 
 
 
-html += `
+html+=`
 
 <button onclick="openHome()">
 
@@ -270,8 +398,7 @@ html += `
 
 
 
-document.getElementById("content").innerHTML = html;
-
+document.getElementById("content").innerHTML=html;
 
 
 }
@@ -283,18 +410,12 @@ document.getElementById("content").innerHTML = html;
 
 
 
-// =========================
-// TEST BUY
-// =========================
-
-
 async function buy(id){
 
 
+let res=await fetch(
 
-let response = await fetch(
-
-API +
+API+
 "/testbuy/"
 +
 userId
@@ -313,12 +434,11 @@ method:"POST"
 
 
 
-let data = await response.json();
+let data=await res.json();
 
 
 
 alert(data.message);
-
 
 
 loadUser();
@@ -333,17 +453,16 @@ loadUser();
 
 
 
+
 // =========================
 // MY EBOOKS
 // =========================
 
 
-
 async function openMyEbooks(){
 
 
-
-let response = await fetch(
+let res=await fetch(
 
 API+
 "/myebooks/"
@@ -354,37 +473,32 @@ userId
 
 
 
-let books = await response.json();
+let books=await res.json();
 
 
 
-let html = `
-
+let html=`
 
 <div class="box">
-
 
 <h2>
 📖 My ebooks
 </h2>
 
-
 `;
 
 
 
-if(books.length === 0){
+if(books.length===0){
 
 
-html += `
+html+=`
 
 <p>
-You don't own any ebooks yet.
+No ebooks yet
 </p>
 
 `;
-
-
 
 }
 
@@ -392,32 +506,24 @@ You don't own any ebooks yet.
 else{
 
 
-books.forEach(book=>{
+books.forEach(b=>{
 
 
-html += `
-
+html+=`
 
 <div class="card">
 
 
+<img class="ebook-image"
+src="${b.image}">
+
+
 <h3>
-${book.name}
+${b.name}
 </h3>
 
 
-<img
-
-src="${book.image}"
-
-class="ebook-image"
-
-
->
-
-
-
-<button onclick="downloadBook('${book.file}')">
+<button onclick="downloadBook('${b.file}')">
 
 ⬇️ Download
 
@@ -430,7 +536,6 @@ class="ebook-image"
 `;
 
 
-
 });
 
 
@@ -438,8 +543,8 @@ class="ebook-image"
 
 
 
-html += `
 
+html+=`
 
 <button onclick="openHome()">
 
@@ -450,16 +555,16 @@ html += `
 
 </div>
 
-
 `;
 
 
 
-document.getElementById("content").innerHTML = html;
-
+document.getElementById("content").innerHTML=html;
 
 
 }
+
+
 
 
 
@@ -474,13 +579,9 @@ window.open(
 API+
 "/download/"
 +
-userId
-+
-"/"
-+
-file.replace(".pdf",""),
-
-"_blank"
+userId+
+"/"+
+file.replace(".pdf","")
 
 );
 
@@ -493,28 +594,56 @@ file.replace(".pdf",""),
 
 
 
+
 // =========================
-// GIVEAWAYS PLACEHOLDER
+// PROFILE
 // =========================
 
 
+async function openProfile(){
 
-function openGiveaways(){
+
+let res=await fetch(
+
+API+
+"/user/"
++
+userId
+
+);
 
 
-document.getElementById("content").innerHTML = `
+
+let u=await res.json();
+
+
+
+document.getElementById("content").innerHTML=`
 
 
 <div class="box">
 
 
 <h2>
-🎁 Giveaways
+👤 Profile
 </h2>
 
 
 <p>
-Coming soon...
+Username:
+${u.username}
+</p>
+
+
+<p>
+🎟️ Tickets:
+${u.tickets}
+</p>
+
+
+<p>
+⭐ Level:
+${u.level}
 </p>
 
 
@@ -532,14 +661,5 @@ Coming soon...
 `;
 
 
+
 }
-
-
-
-
-
-
-
-// START APP
-
-start();
