@@ -397,3 +397,25 @@ def get_ebooks(user_id):
 
 
     return result
+
+def save_language(user_id, language):
+
+    conn = sqlite3.connect("bot_database.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET language = ?
+        WHERE user_id = ?
+        """,
+        (
+            language,
+            user_id
+        )
+    )
+
+    conn.commit()
+
+    conn.close()
