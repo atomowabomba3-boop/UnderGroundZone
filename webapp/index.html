@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
 
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>UndergroundZone</title>
 
 <link rel="stylesheet" href="/static/style.css">
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 </head>
 
@@ -23,63 +25,35 @@
 
 <h1>⛏️ UndergroundZone</h1>
 
-<p id="welcome">
-Welcome back!
-</p>
+<p>Welcome to the underground economy</p>
 
 </header>
 
 
 
-<section class="stats">
+<div class="stats">
 
 
-<div class="stat-card">
+<div class="card">
 
-🎟️
-<strong id="tickets">
-0
-</strong>
+<span>🎟️ Tickets</span>
 
-<span>
-Tickets
-</span>
+<h2 id="tickets">0</h2>
 
 </div>
 
 
 
-<div class="stat-card">
+<div class="card">
 
-💎
-<strong id="gems">
-0
-</strong>
+<span>💎 Gems</span>
 
-<span>
-Gems
-</span>
+<h2 id="gems">0</h2>
 
 </div>
 
 
-
-<div class="stat-card">
-
-🏆
-<strong id="level">
-1
-</strong>
-
-<span>
-Level
-</span>
-
 </div>
-
-
-</section>
-
 
 
 
@@ -88,64 +62,48 @@ Level
 
 
 
-<div class="main-card">
+<div class="box">
 
-
-<h2>
-🎁 Active Giveaway
-</h2>
+<h2>🏠 Dashboard</h2>
 
 
 <p>
-Prize Pool:
+User:
+<b id="username">
+Loading...
+</b>
 </p>
 
 
-<h3>
-💰 $0
-</h3>
 
+<button onclick="openMining()">
 
-<p>
-👥 Participants: 0
-</p>
+⛏️ Mining
 
-
-<button>
-JOIN GIVEAWAY
 </button>
 
 
-</div>
 
+<button onclick="openShop()">
 
-
-
-<div class="main-card">
-
-
-<h2>
 📚 Ebook Store
-</h2>
 
-
-<p>
-Premium digital products
-</p>
-
-
-<button>
-OPEN STORE
 </button>
 
 
+<button onclick="openGiveaway()">
+
+🎁 Giveaway
+
+</button>
+
+
+
 </div>
 
 
 
-
 </div>
-
 
 
 
@@ -153,42 +111,23 @@ OPEN STORE
 <nav>
 
 
-<button onclick="openPage('home')">
-
+<button onclick="home()">
 🏠
-
-Home
-
 </button>
 
 
-
-<button onclick="openPage('giveaway')">
-
-🎁
-
-Giveaway
-
-</button>
-
-
-
-<button onclick="openPage('store')">
-
+<button onclick="openShop()">
 📚
-
-Store
-
 </button>
 
 
+<button onclick="openGiveaway()">
+🎁
+</button>
 
-<button onclick="openPage('profile')">
 
+<button onclick="profile()">
 👤
-
-Profile
-
 </button>
 
 
@@ -204,5 +143,4 @@ Profile
 
 
 </body>
-
 </html>
