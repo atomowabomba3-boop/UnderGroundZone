@@ -10,7 +10,13 @@ from database import (
     add_tickets,
     add_ebook,
     has_ebook,
-    get_user_ebooks
+    get_user_ebooks,
+    get_active_giveaway,
+    already_joined,
+    join_giveaway,
+    use_tickets_for_giveaway,
+    create_giveaway,
+    get_participants
 )
 
 
@@ -30,6 +36,8 @@ app.add_middleware(
 
 
 
+
+
 # =========================
 # FILES
 # =========================
@@ -40,7 +48,6 @@ app.mount(
     StaticFiles(directory="webapp"),
     name="static"
 )
-
 
 
 app.mount(
@@ -54,17 +61,8 @@ app.mount(
 
 
 # =========================
-# MINI APP
+# APP
 # =========================
-
-
-@app.get("/app")
-async def mini_app():
-
-    return FileResponse(
-        "webapp/index.html"
-    )
-
 
 
 @app.get("/")
@@ -76,10 +74,21 @@ async def home():
 
 
 
+@app.get("/app")
+async def mini_app():
+
+    return FileResponse(
+        "webapp/index.html"
+    )
+
+
+
+
+
 
 
 # =========================
-# USERS
+# USER
 # =========================
 
 
@@ -87,7 +96,7 @@ async def home():
 async def user(user_id:int):
 
 
-    data=get_user(user_id)
+    data = get_user(user_id)
 
 
 
@@ -98,7 +107,9 @@ async def user(user_id:int):
             "Telegram User"
         )
 
+
         data=get_user(user_id)
+
 
 
 
@@ -122,10 +133,11 @@ async def user(user_id:int):
 
 
 
+
+
 # =========================
 # EBOOK STORE
 # =========================
-
 
 
 ebooks = {
@@ -177,14 +189,15 @@ ebooks = {
 
 }
 
-
 }
 
 
 
 
+
+
 @app.get("/ebooks")
-async def get_ebooks():
+async def ebook_list():
 
     return ebooks
 
@@ -192,9 +205,6 @@ async def get_ebooks():
 
 
 
-# =========================
-# USER EBOOKS
-# =========================
 
 
 @app.get("/myebooks/{user_id}")
@@ -207,13 +217,12 @@ async def my_ebooks(user_id:int):
     result=[]
 
 
-    for ebook in owned:
+    for ebook_id in owned:
 
-
-        if ebook in ebooks:
+        if ebook_id in ebooks:
 
             result.append(
-                ebooks[ebook]
+                ebooks[ebook_id]
             )
 
 
@@ -223,13 +232,10 @@ async def my_ebooks(user_id:int):
 
 
 
-# =========================
-# DOWNLOAD
-# =========================
 
 
 @app.get("/download/{user_id}/{ebook_id}")
-async def download(user_id:int,ebook_id:str):
+async def download(user_id:int, ebook_id:str):
 
 
     if not has_ebook(
@@ -246,20 +252,9 @@ async def download(user_id:int,ebook_id:str):
 
 
 
-    if ebook_id not in ebooks:
-
-        return {
-
-            "error":
-            "Not found"
-
-        }
-
-
-
     return FileResponse(
 
-        "ebooks/" + ebooks[ebook_id]["file"],
+        "ebooks/"+ebooks[ebook_id]["file"],
 
         filename=ebooks[ebook_id]["file"]
 
@@ -269,15 +264,16 @@ async def download(user_id:int,ebook_id:str):
 
 
 
-# =========================
-# TEMP BUY TEST
-# =========================
-# później zastąpi Crypto Pay
 
+
+# =========================
+# TEST BUY
+# później Crypto Pay
+# =========================
 
 
 @app.post("/testbuy/{user_id}/{ebook_id}")
-async def test_buy(user_id:int,ebook_id:str):
+async def test_buy(user_id:int, ebook_id:str):
 
 
     if ebook_id not in ebooks:
@@ -292,16 +288,140 @@ async def test_buy(user_id:int,ebook_id:str):
 
 
 
+    add_ebook(
+        user_id,
+        ebook_id
+    )
+
+
     add_tickets(
         user_id,
         book["tickets"]
     )
 
 
+    return {
 
-    add_ebook(
+        "success":True,
+
+        "message":
+        "Purchased!"
+
+    }
+
+
+
+
+
+
+
+
+# =========================
+# GIVEAWAY
+# =========================
+
+
+
+@app.get("/giveaway")
+async def giveaway():
+
+    giveaway=get_active_giveaway()
+
+
+    if not giveaway:
+
+        return {
+
+            "active":False
+
+        }
+
+
+
+    participants=get_participants(
+        giveaway[0]
+    )
+
+
+
+    return {
+
+        "active":True,
+
+        "id":giveaway[0],
+
+        "prize":giveaway[1],
+
+        "end":giveaway[2],
+
+        "participants":len(participants)
+
+    }
+
+
+
+
+
+
+
+
+@app.post("/join-giveaway/{user_id}")
+async def join(user_id:int):
+
+
+    giveaway=get_active_giveaway()
+
+
+
+    if not giveaway:
+
+        return {
+
+            "success":False,
+
+            "message":
+            "No active giveaway"
+
+        }
+
+
+
+
+    giveaway_id=giveaway[0]
+
+
+
+    if already_joined(
         user_id,
-        ebook_id
+        giveaway_id
+    ):
+
+        return {
+
+            "success":False,
+
+            "message":
+            "Already joined"
+
+        }
+
+
+
+
+    tickets=use_tickets_for_giveaway(
+        user_id
+    )
+
+
+
+    join_giveaway(
+
+        user_id,
+
+        giveaway_id,
+
+        tickets+1
+
     )
 
 
@@ -310,7 +430,40 @@ async def test_buy(user_id:int,ebook_id:str):
 
         "success":True,
 
+        "tickets":
+        tickets+1,
+
         "message":
-        "Purchased successfully"
+        "Joined giveaway!"
+
+    }
+
+
+
+
+
+
+
+# =========================
+# ADMIN TEST
+# =========================
+
+
+@app.post("/create-giveaway")
+async def new_giveaway():
+
+
+    create_giveaway(
+
+        500,
+
+        "2026-08-01"
+
+    )
+
+
+    return {
+
+        "created":True
 
     }
