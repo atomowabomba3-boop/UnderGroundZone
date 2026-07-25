@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
 
 <meta charset="UTF-8">
@@ -18,69 +19,100 @@
 <div class="app">
 
 
+<header>
+
 <h1>⛏️ UndergroundZone</h1>
 
+<p id="welcome">
+Welcome back!
+</p>
 
-<div class="card">
+</header>
 
-<h2 id="username">
-Loading...
+
+
+<section class="stats">
+
+
+<div class="stat-card">
+
+🎟️
+<strong id="tickets">
+0
+</strong>
+
+<span>
+Tickets
+</span>
+
+</div>
+
+
+
+<div class="stat-card">
+
+💎
+<strong id="gems">
+0
+</strong>
+
+<span>
+Gems
+</span>
+
+</div>
+
+
+
+<div class="stat-card">
+
+🏆
+<strong id="level">
+1
+</strong>
+
+<span>
+Level
+</span>
+
+</div>
+
+
+</section>
+
+
+
+
+
+<div id="content">
+
+
+
+<div class="main-card">
+
+
+<h2>
+🎁 Active Giveaway
 </h2>
 
 
-<div class="stats">
-
-<div>
-🎟️
-<span id="tickets">0</span>
-<br>
-Tickets
-</div>
-
-
-<div>
-⚡
-<span id="energy">100</span>
-<br>
-Energy
-</div>
-
-
-</div>
-
-
-</div>
-
-
-
-<button id="mine">
-
-⛏️
-
-</button>
-
-
-<p id="message">
-Click the pickaxe!
+<p>
+Prize Pool:
 </p>
 
 
-
-<div class="menu">
-
-
-<button onclick="showShop()">
-📚 Shop
-</button>
+<h3>
+💰 $0
+</h3>
 
 
-<button onclick="showLanguage()">
-🌍 Language
-</button>
+<p>
+👥 Participants: 0
+</p>
 
 
-<button onclick="showProfile()">
-👤 Profile
+<button>
+JOIN GIVEAWAY
 </button>
 
 
@@ -88,7 +120,80 @@ Click the pickaxe!
 
 
 
-<div id="panel"></div>
+
+<div class="main-card">
+
+
+<h2>
+📚 Ebook Store
+</h2>
+
+
+<p>
+Premium digital products
+</p>
+
+
+<button>
+OPEN STORE
+</button>
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+<nav>
+
+
+<button onclick="openPage('home')">
+
+🏠
+
+Home
+
+</button>
+
+
+
+<button onclick="openPage('giveaway')">
+
+🎁
+
+Giveaway
+
+</button>
+
+
+
+<button onclick="openPage('store')">
+
+📚
+
+Store
+
+</button>
+
+
+
+<button onclick="openPage('profile')">
+
+👤
+
+Profile
+
+</button>
+
+
+</nav>
+
 
 
 </div>
@@ -99,4 +204,5 @@ Click the pickaxe!
 
 
 </body>
+
 </html>
