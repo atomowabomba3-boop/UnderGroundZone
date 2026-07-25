@@ -3,35 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-import random
-import time
-
-
 from database import (
     init_db,
     create_user,
     get_user,
     add_tickets,
-    save_language
+    add_ebook,
+    has_ebook,
+    get_user_ebooks
 )
-
 
 
 app = FastAPI()
 
 
-
-# =========================
-# DATABASE
-# =========================
-
 init_db()
 
 
-
-# =========================
-# CORS
-# =========================
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,8 +31,9 @@ app.add_middleware(
 
 
 # =========================
-# MINI APP FILES
+# FILES
 # =========================
+
 
 app.mount(
     "/static",
@@ -52,6 +41,21 @@ app.mount(
     name="static"
 )
 
+
+
+app.mount(
+    "/ebooks",
+    StaticFiles(directory="ebooks"),
+    name="ebooks"
+)
+
+
+
+
+
+# =========================
+# MINI APP
+# =========================
 
 
 @app.get("/app")
@@ -67,386 +71,115 @@ async def mini_app():
 async def home():
 
     return {
-        "status":
-        "UndergroundZone API running"
+        "status":"UndergroundZone running"
     }
 
 
 
-# =========================
-# MINING SETTINGS
-# =========================
-
-MAX_ENERGY = 100
-
-ENERGY_REGEN_TIME = 10
-
-MIN_CLICK_DELAY = 0.7
-
-
-
-miners = {}
-
-
-
-def get_miner(user_id:int):
-
-
-    now = time.time()
-
-
-
-    if user_id not in miners:
-
-        miners[user_id] = {
-
-            "energy": MAX_ENERGY,
-
-            "last_click": 0,
-
-            "last_update": now
-
-        }
-
-
-
-    miner = miners[user_id]
-
-
-
-    # regeneracja energii
-
-    passed = now - miner["last_update"]
-
-
-
-    recovered = int(
-        passed / ENERGY_REGEN_TIME
-    )
-
-
-
-    if recovered > 0:
-
-
-        miner["energy"] = min(
-
-            MAX_ENERGY,
-
-            miner["energy"] + recovered
-
-        )
-
-
-        miner["last_update"] = now
-
-
-
-    return miner
-
-
 
 
 # =========================
-# USER DATA
+# USERS
 # =========================
+
 
 @app.get("/user/{user_id}")
-async def user_data(user_id:int):
+async def user(user_id:int):
 
 
-    user = get_user(user_id)
+    data=get_user(user_id)
 
 
 
-    if not user:
-
-
-        create_user(
-
-            user_id,
-
-            "Telegram User"
-
-        )
-
-
-        user = get_user(user_id)
-
-
-
-
-    miner = get_miner(user_id)
-
-
-
-    return {
-
-
-        "id":
-        user[0],
-
-
-        "username":
-        user[1],
-
-
-        "language":
-        user[2],
-
-
-        "tickets":
-        user[3],
-
-
-        "gems":
-        user[4],
-
-
-        "level":
-        user[5],
-
-
-        "energy":
-        miner["energy"]
-
-    }
-
-
-
-
-
-# =========================
-# MINING
-# =========================
-
-@app.post("/mine/{user_id}")
-async def mine(user_id:int):
-
-
-    miner = get_miner(user_id)
-
-
-
-    now = time.time()
-
-
-
-    # anty autoclicker
-
-    if now - miner["last_click"] < MIN_CLICK_DELAY:
-
-
-        return {
-
-
-            "success":
-            False,
-
-
-            "reward":
-            0,
-
-
-            "energy":
-            miner["energy"],
-
-
-            "message":
-            "⚠️ Too fast!"
-
-        }
-
-
-
-
-    miner["last_click"] = now
-
-
-
-
-    if miner["energy"] <= 0:
-
-
-        return {
-
-
-            "success":
-            False,
-
-
-            "reward":
-            0,
-
-
-            "energy":
-            0,
-
-
-            "message":
-            "⚡ No energy!"
-
-        }
-
-
-
-
-
-    # zużycie energii
-
-    miner["energy"] -= 1
-
-
-
-
-
-    # 1% szansa na bilet
-
-    if random.random() <= 0.01:
-
-
-
-        add_tickets(
-
-            user_id,
-
-            1
-
-        )
-
-
-
-        return {
-
-
-            "success":
-            True,
-
-
-            "reward":
-            1,
-
-
-            "energy":
-            miner["energy"],
-
-
-            "message":
-            "💎 Found a ticket! +1 🎟️"
-
-        }
-
-
-
-
-
-    return {
-
-
-        "success":
-        True,
-
-
-        "reward":
-        0,
-
-
-        "energy":
-        miner["energy"],
-
-
-        "message":
-        "⛏️ Nothing found..."
-
-    }
-
-
-@app.post("/language/{user_id}/{language}")
-async def change_language(
-    user_id:int,
-    language:str
-):
-
-    allowed = [
-        "en",
-        "pl",
-        "de"
-    ]
-
-
-    if language not in allowed:
-
-        return {
-            "success":False
-        }
-
-
-
-    save_language(
-        user_id,
-        language
-    )
-
-
-    return {
-
-        "success":True,
-
-        "language":language
-
-    }
-
-@app.post("/register/{user_id}")
-async def register(user_id:int):
-
-
-    user = get_user(user_id)
-
-
-    if not user:
+    if not data:
 
         create_user(
             user_id,
             "Telegram User"
         )
 
+        data=get_user(user_id)
+
+
 
     return {
 
-        "success":True,
+        "id":data[0],
 
-        "user_id":user_id
+        "username":data[1],
+
+        "language":data[2],
+
+        "tickets":data[3],
+
+        "gems":data[4],
+
+        "level":data[5]
 
     }
+
+
+
+
 
 # =========================
 # EBOOK STORE
 # =========================
 
 
+
 ebooks = {
 
-    "tier1": {
-        "name":"🟩 Starter Ebook",
-        "price":2,
-        "tickets":50
-    },
+
+"ebook_1":{
+
+"name":"🟩 Starter Ebook",
+
+"price":2,
+
+"tickets":50,
+
+"image":"/static/images/ebook_green.png.jpg",
+
+"file":"ebook_1.pdf"
+
+},
 
 
-    "tier2": {
-        "name":"🟦 Advanced Ebook",
-        "price":5,
-        "tickets":200
-    },
+
+"ebook_2":{
+
+"name":"🟦 Advanced Ebook",
+
+"price":5,
+
+"tickets":200,
+
+"image":"/static/images/ebook_blue.png.jpg",
+
+"file":"ebook_2.pdf"
+
+},
 
 
-    "tier3": {
-        "name":"🟪 Ultimate Ebook",
-        "price":10,
-        "tickets":500
-    }
+
+"ebook_3":{
+
+"name":"🟪 Ultimate Ebook",
+
+"price":10,
+
+"tickets":500,
+
+"image":"/static/images/ebook_purple.png.jpg",
+
+"file":"ebook_3.pdf"
 
 }
+
+
+}
+
 
 
 
@@ -457,26 +190,120 @@ async def get_ebooks():
 
 
 
-@app.post("/buy/{user_id}/{tier}")
-async def buy_ebook(user_id:int,tier:str):
 
 
-    if tier not in ebooks:
+# =========================
+# USER EBOOKS
+# =========================
+
+
+@app.get("/myebooks/{user_id}")
+async def my_ebooks(user_id:int):
+
+
+    owned=get_user_ebooks(user_id)
+
+
+    result=[]
+
+
+    for ebook in owned:
+
+
+        if ebook in ebooks:
+
+            result.append(
+                ebooks[ebook]
+            )
+
+
+    return result
+
+
+
+
+
+# =========================
+# DOWNLOAD
+# =========================
+
+
+@app.get("/download/{user_id}/{ebook_id}")
+async def download(user_id:int,ebook_id:str):
+
+
+    if not has_ebook(
+        user_id,
+        ebook_id
+    ):
 
         return {
-            "success":False,
-            "message":"Invalid ebook"
+
+            "error":
+            "You don't own this ebook"
+
         }
 
 
 
-    ebook = ebooks[tier]
+    if ebook_id not in ebooks:
+
+        return {
+
+            "error":
+            "Not found"
+
+        }
+
+
+
+    return FileResponse(
+
+        "ebooks/" + ebooks[ebook_id]["file"],
+
+        filename=ebooks[ebook_id]["file"]
+
+    )
+
+
+
+
+
+# =========================
+# TEMP BUY TEST
+# =========================
+# później zastąpi Crypto Pay
+
+
+
+@app.post("/testbuy/{user_id}/{ebook_id}")
+async def test_buy(user_id:int,ebook_id:str):
+
+
+    if ebook_id not in ebooks:
+
+        return {
+            "success":False
+        }
+
+
+
+    book=ebooks[ebook_id]
+
 
 
     add_tickets(
         user_id,
-        ebook["tickets"]
+        book["tickets"]
     )
+
+
+
+    add_ebook(
+        user_id,
+        ebook_id
+    )
+
 
 
     return {
@@ -484,6 +311,6 @@ async def buy_ebook(user_id:int,tier:str):
         "success":True,
 
         "message":
-        f"Purchased {ebook['name']} +{ebook['tickets']} tickets"
+        "Purchased successfully"
 
     }
