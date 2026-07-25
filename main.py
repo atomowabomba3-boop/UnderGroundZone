@@ -280,4 +280,16 @@ Store coming soon.
     await callback.answer()
 
 
-#
+# =========================
+# START BOT
+# =========================
+
+async def main():
+
+    print("🚀 UndergroundZone Bot started")
+
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
