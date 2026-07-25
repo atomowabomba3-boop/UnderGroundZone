@@ -1,42 +1,57 @@
-// =========================
-// TELEGRAM MINI APP
-// =========================
-
 const tg = window.Telegram.WebApp;
 
 tg.expand();
 
 
-// =========================
+// =======================
 // USER
-// =========================
+// =======================
 
-let userId = null;
+let userId = 123456;
 
-if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
 
-    userId = tg.initDataUnsafe.user.id;
+if (
+    tg.initDataUnsafe &&
+    tg.initDataUnsafe.user
+){
 
-} else {
-
-    // test poza Telegramem
-
-    userId = 123456;
+    userId =
+    tg.initDataUnsafe.user.id;
 
 }
 
 
 
-// =========================
-// ELEMENTS
-// =========================
+// =======================
+// API
+// =======================
 
-const ticketsText =
+const API = "";
+
+
+
+// =======================
+// ELEMENTS
+// =======================
+
+const ticketsEl =
 document.getElementById("tickets");
 
 
-const energyText =
+const energyEl =
 document.getElementById("energy");
+
+
+const gemsEl =
+document.getElementById("gems");
+
+
+const levelEl =
+document.getElementById("level");
+
+
+const energyFill =
+document.getElementById("energyFill");
 
 
 const message =
@@ -48,101 +63,113 @@ document.getElementById("pickaxe");
 
 
 
-// =========================
+// =======================
 // DATA
-// =========================
+// =======================
 
 let tickets = 0;
 
-let energy = 0;
+let energy = 100;
 
+let gems = 0;
 
-
-// =========================
-// API ADDRESS
-// =========================
-
-// jeśli Mini App i API są na tej samej domenie:
-
-const API = "";
-
-
-// jeśli będziesz miał osobny backend,
-// zmienisz np:
-// const API = "https://twoje-api.up.railway.app";
+let level = 1;
 
 
 
 
-// =========================
-// UPDATE UI
-// =========================
+// =======================
+// UPDATE SCREEN
+// =======================
 
 function updateUI(){
 
 
-    ticketsText.innerText =
+    ticketsEl.innerText =
     tickets;
 
 
-    energyText.innerText =
+    energyEl.innerText =
     energy;
+
+
+    gemsEl.innerText =
+    gems;
+
+
+    levelEl.innerText =
+    level;
+
+
+
+    let percent =
+    energy;
+
+
+
+    energyFill.style.width =
+    percent + "%";
 
 
 }
 
 
 
-
-// =========================
+// =======================
 // LOAD USER
-// =========================
+// =======================
 
 async function loadUser(){
 
 
-    try {
+try{
 
 
-        const response =
-        await fetch(
-            `${API}/user/${userId}`
-        );
-
-
-        const data =
-        await response.json();
+const res =
+await fetch(
+`${API}/user/${userId}`
+);
 
 
 
-        tickets =
-        data.tickets;
-
-
-        energy =
-        data.energy;
+const data =
+await res.json();
 
 
 
-        updateUI();
+tickets =
+data.tickets;
+
+
+energy =
+data.energy;
+
+
+gems =
+data.gems;
+
+
+level =
+data.level;
 
 
 
-    }
-
-    catch(error){
+updateUI();
 
 
-        console.log(
-            "API ERROR:",
-            error
-        );
+
+}
+catch(e){
 
 
-        message.innerText =
-        "⚠️ Connection error";
+console.log(e);
 
-    }
+
+message.innerText =
+"⚠️ Server error";
+
+
+}
 
 
 }
@@ -150,88 +177,99 @@ async function loadUser(){
 
 
 
-// =========================
+// =======================
 // MINING
-// =========================
+// =======================
 
 async function mine(){
 
 
-    if(energy <= 0){
+if(energy <= 0){
 
 
-        message.innerText =
-        "⚡ No energy!";
+message.innerText =
+"⚡ No energy!";
 
 
-        return;
-
-    }
+return;
 
 
-
-    pickaxe.style.transform =
-    "scale(0.85) rotate(-15deg)";
-
-
-
-    setTimeout(()=>{
-
-
-        pickaxe.style.transform =
-        "";
-
-
-    },150);
+}
 
 
 
 
-    try {
+// animation
+
+pickaxe.style.transform =
+"scale(.8) rotate(-20deg)";
 
 
-        const response =
-        await fetch(
-
-            `${API}/mine/${userId}`,
-
-            {
-
-                method:"POST"
-
-            }
-
-        );
+setTimeout(()=>{
 
 
+pickaxe.style.transform =
+"";
 
-        const data =
-        await response.json();
+
+},150);
 
 
 
-        message.innerText =
-        data.message;
+
+
+try{
+
+
+const res =
+await fetch(
+
+`${API}/mine/${userId}`,
+
+{
+
+method:"POST"
+
+}
+
+);
 
 
 
-        await loadUser();
+const data =
+await res.json();
 
 
 
-    }
+message.innerText =
+data.message;
 
 
-    catch(error){
+
+if(data.reward > 0){
 
 
-        console.log(error);
+showReward(
+"+1 🎟️"
+);
 
 
-        message.innerText =
-        "⚠️ Server error";
+}
 
-    }
+
+
+await loadUser();
+
+
+
+}
+catch(e){
+
+
+console.log(e);
+
+
+}
 
 
 
@@ -239,86 +277,80 @@ async function mine(){
 
 
 
-// =========================
-// PICKAXE CLICK
-// =========================
+
+// =======================
+// REWARD POPUP
+// =======================
+
+function showReward(text){
+
+
+const popup =
+document.createElement("div");
+
+
+popup.innerText =
+text;
+
+
+popup.style.position =
+"fixed";
+
+
+popup.style.top =
+"45%";
+
+
+popup.style.left =
+"50%";
+
+
+popup.style.transform =
+"translate(-50%,-50%)";
+
+
+popup.style.fontSize =
+"40px";
+
+
+popup.style.zIndex =
+"999";
+
+
+document.body.appendChild(
+popup
+);
+
+
+
+setTimeout(()=>{
+
+
+popup.remove();
+
+
+},1000);
+
+
+
+}
+
+
+
+// =======================
+// CLICK
+// =======================
 
 pickaxe.addEventListener(
-    "click",
-    mine
+"click",
+mine
 );
 
 
 
 
-// =========================
-// BUTTON EVENTS
-// =========================
-
-const buttons =
-document.querySelectorAll(
-    ".menu button"
-);
-
-
-
-buttons.forEach(
-(button,index)=>{
-
-
-    button.addEventListener(
-        "click",
-        ()=>{
-
-
-            if(index === 0){
-
-                message.innerText =
-                "👤 Profile";
-
-
-            }
-
-
-            if(index === 1){
-
-                message.innerText =
-                "🛒 Store coming soon";
-
-
-            }
-
-
-            if(index === 2){
-
-                message.innerText =
-                "🎁 Giveaway";
-
-
-            }
-
-
-            if(index === 3){
-
-                message.innerText =
-                "🌎 Language";
-
-
-            }
-
-
-
-        }
-    );
-
-
-});
-
-
-
-
-// =========================
+// =======================
 // START
-// =========================
+// =======================
 
 loadUser();
