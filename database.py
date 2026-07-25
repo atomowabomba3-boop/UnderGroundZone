@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 
 DB = "database.db"
@@ -6,21 +7,20 @@ DB = "database.db"
 
 
 def connect():
-
     return sqlite3.connect(DB)
 
 
 
 
+
 # =========================
-# INIT DATABASE
+# INIT
 # =========================
 
 
 def init_db():
 
     con = connect()
-
     cur = con.cursor()
 
 
@@ -36,7 +36,7 @@ def init_db():
 
         language TEXT DEFAULT 'en',
 
-        tickets INTEGER DEFAULT 0,
+        tickets INTEGER DEFAULT 1,
 
         gems INTEGER DEFAULT 0,
 
@@ -47,7 +47,8 @@ def init_db():
 
 
 
-    # PURCHASED EBOOKS
+
+    # OWNED EBOOKS
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS ebooks_owned(
@@ -58,45 +59,68 @@ def init_db():
 
         ebook_id TEXT,
 
-        purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        purchased_at TEXT
 
     )
     """)
 
 
 
-    # PAYMENTS
+
+    # GIVEAWAY
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS payments(
+    CREATE TABLE IF NOT EXISTS giveaway(
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        user_id INTEGER,
+        prize REAL,
 
-        payment_id TEXT,
+        end_time TEXT,
 
-        ebook_id TEXT,
-
-        status TEXT DEFAULT 'pending'
+        active INTEGER DEFAULT 1
 
     )
     """)
 
 
 
-    # GIVEAWAY USED TICKETS
+
+    # GIVEAWAY ENTRIES
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS giveaway_entries(
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
 
+        giveaway_id INTEGER,
+
         user_id INTEGER,
 
-        giveaway_id TEXT,
+        tickets INTEGER,
 
-        tickets_used INTEGER
+        joined_at TEXT
+
+    )
+    """)
+
+
+
+
+    # WINNERS
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS winners(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        giveaway_id INTEGER,
+
+        user_id INTEGER,
+
+        prize REAL,
+
+        date TEXT
 
     )
     """)
@@ -104,8 +128,8 @@ def init_db():
 
 
     con.commit()
-
     con.close()
+
 
 
 
@@ -117,20 +141,16 @@ def init_db():
 # =========================
 
 
-
 def create_user(user_id, username):
 
-
-    con=connect()
-
-    cur=con.cursor()
-
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
     """
     INSERT OR IGNORE INTO users
-    (id,username)
+    (id, username)
     VALUES (?,?)
     """,
     (
@@ -141,8 +161,8 @@ def create_user(user_id, username):
 
 
     con.commit()
-
     con.close()
+
 
 
 
@@ -150,23 +170,24 @@ def create_user(user_id, username):
 
 def get_user(user_id):
 
-
-    con=connect()
-
-    cur=con.cursor()
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
-        "SELECT * FROM users WHERE id=?",
-        (user_id,)
+    """
+    SELECT *
+    FROM users
+    WHERE id=?
+    """,
+    (user_id,)
     )
 
 
-    data=cur.fetchone()
+    data = cur.fetchone()
 
 
     con.close()
-
 
     return data
 
@@ -177,10 +198,8 @@ def get_user(user_id):
 
 def add_tickets(user_id, amount):
 
-
-    con=connect()
-
-    cur=con.cursor()
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
@@ -197,7 +216,6 @@ def add_tickets(user_id, amount):
 
 
     con.commit()
-
     con.close()
 
 
@@ -205,30 +223,56 @@ def add_tickets(user_id, amount):
 
 
 
-def remove_tickets(user_id, amount):
+def use_tickets_for_giveaway(user_id):
+
+    con = connect()
+    cur = con.cursor()
 
 
-    con=connect()
+    # zostawia 1 stały bilet
 
-    cur=con.cursor()
+    cur.execute(
+    """
+    SELECT tickets
+    FROM users
+    WHERE id=?
+    """,
+    (user_id,)
+    )
+
+
+    data = cur.fetchone()
+
+
+    if not data:
+        con.close()
+        return 0
+
+
+
+    current = data[0]
+
+    used = max(current - 1, 0)
+
 
 
     cur.execute(
     """
     UPDATE users
-    SET tickets=tickets-?
+    SET tickets=1
     WHERE id=?
     """,
-    (
-        amount,
-        user_id
+    (user_id,)
     )
-    )
+
 
 
     con.commit()
-
     con.close()
+
+
+    return used
+
 
 
 
@@ -237,10 +281,8 @@ def remove_tickets(user_id, amount):
 
 def save_language(user_id, language):
 
-
-    con=connect()
-
-    cur=con.cursor()
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
@@ -257,7 +299,6 @@ def save_language(user_id, language):
 
 
     con.commit()
-
     con.close()
 
 
@@ -271,34 +312,28 @@ def save_language(user_id, language):
 # =========================
 
 
-
-
 def add_ebook(user_id, ebook_id):
 
-
-    con=connect()
-
-    cur=con.cursor()
-
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
     """
     INSERT INTO ebooks_owned
-    (user_id, ebook_id)
-    VALUES (?,?)
+    (user_id, ebook_id, purchased_at)
+    VALUES (?,?,?)
     """,
     (
         user_id,
-        ebook_id
+        ebook_id,
+        datetime.now().isoformat()
     )
     )
 
 
     con.commit()
-
     con.close()
-
 
 
 
@@ -306,16 +341,14 @@ def add_ebook(user_id, ebook_id):
 
 def has_ebook(user_id, ebook_id):
 
-
-    con=connect()
-
-    cur=con.cursor()
-
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
     """
-    SELECT id FROM ebooks_owned
+    SELECT id
+    FROM ebooks_owned
     WHERE user_id=? AND ebook_id=?
     """,
     (
@@ -325,7 +358,7 @@ def has_ebook(user_id, ebook_id):
     )
 
 
-    result=cur.fetchone()
+    result = cur.fetchone()
 
 
     con.close()
@@ -339,11 +372,8 @@ def has_ebook(user_id, ebook_id):
 
 def get_user_ebooks(user_id):
 
-
-    con=connect()
-
-    cur=con.cursor()
-
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
@@ -356,16 +386,13 @@ def get_user_ebooks(user_id):
     )
 
 
-    data=cur.fetchall()
+    data = cur.fetchall()
 
 
     con.close()
 
 
-    return [
-        x[0]
-        for x in data
-    ]
+    return [x[0] for x in data]
 
 
 
@@ -374,90 +401,63 @@ def get_user_ebooks(user_id):
 
 
 # =========================
-# PAYMENTS
+# GIVEAWAY
 # =========================
 
 
+def create_giveaway(prize, end_time):
+
+    con = connect()
+    cur = con.cursor()
 
 
-def create_payment(user_id,payment_id,ebook_id):
+    # wyłącz stare
 
-
-    con=connect()
-
-    cur=con.cursor()
+    cur.execute(
+    """
+    UPDATE giveaway
+    SET active=0
+    """
+    )
 
 
     cur.execute(
     """
-    INSERT INTO payments
-    (user_id,payment_id,ebook_id)
-    VALUES (?,?,?)
+    INSERT INTO giveaway
+    (prize,end_time,active)
+    VALUES (?,?,1)
     """,
     (
-        user_id,
-        payment_id,
-        ebook_id
+        prize,
+        end_time
     )
     )
 
 
     con.commit()
-
     con.close()
 
 
 
 
 
+def get_active_giveaway():
 
-def complete_payment(payment_id):
-
-
-    con=connect()
-
-    cur=con.cursor()
-
-
-    cur.execute(
-    """
-    UPDATE payments
-    SET status='paid'
-    WHERE payment_id=?
-    """,
-    (payment_id,)
-    )
-
-
-    con.commit()
-
-    con.close()
-
-
-
-
-
-
-
-def get_payment(payment_id):
-
-
-    con=connect()
-
-    cur=con.cursor()
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
     """
     SELECT *
-    FROM payments
-    WHERE payment_id=?
-    """,
-    (payment_id,)
+    FROM giveaway
+    WHERE active=1
+    LIMIT 1
+    """
     )
 
 
-    data=cur.fetchone()
+    data = cur.fetchone()
 
 
     con.close()
@@ -469,43 +469,86 @@ def get_payment(payment_id):
 
 
 
+def already_joined(user_id, giveaway_id):
+
+    con = connect()
+    cur = con.cursor()
 
 
-# =========================
-# GIVEAWAYS
-# =========================
-
-
-
-
-def enter_giveaway(user_id,giveaway_id,amount):
-
-
-    remove_tickets(
+    cur.execute(
+    """
+    SELECT id
+    FROM giveaway_entries
+    WHERE user_id=? AND giveaway_id=?
+    """,
+    (
         user_id,
-        amount
+        giveaway_id
+    )
     )
 
 
-    con=connect()
+    result = cur.fetchone()
 
-    cur=con.cursor()
+
+    con.close()
+
+
+    return result is not None
+
+
+
+
+
+def join_giveaway(user_id, giveaway_id, tickets):
+
+    con = connect()
+    cur = con.cursor()
 
 
     cur.execute(
     """
     INSERT INTO giveaway_entries
-    (user_id,giveaway_id,tickets_used)
-    VALUES (?,?,?)
+    (giveaway_id,user_id,tickets,joined_at)
+    VALUES (?,?,?,?)
     """,
     (
-        user_id,
         giveaway_id,
-        amount
+        user_id,
+        tickets,
+        datetime.now().isoformat()
     )
     )
 
 
     con.commit()
+    con.close()
+
+
+
+
+
+
+def get_participants(giveaway_id):
+
+    con = connect()
+    cur = con.cursor()
+
+
+    cur.execute(
+    """
+    SELECT *
+    FROM giveaway_entries
+    WHERE giveaway_id=?
+    """,
+    (giveaway_id,)
+    )
+
+
+    data = cur.fetchall()
+
 
     con.close()
+
+
+    return data
