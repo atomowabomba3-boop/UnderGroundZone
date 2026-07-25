@@ -1,104 +1,100 @@
-body {
-
-    margin:0;
-
-    background:#080808;
-
-    color:white;
-
-    font-family:Arial, sans-serif;
-
-    text-align:center;
-
+* {
+    box-sizing: border-box;
 }
 
+body {
+    margin: 0;
+    background:
+    radial-gradient(circle at top, #252525, #050505);
+    color: white;
+    font-family: Arial, sans-serif;
+}
 
 
 .app {
-
-    max-width:500px;
-
-    margin:auto;
-
-    padding:20px;
-
+    max-width: 500px;
+    margin: auto;
+    min-height: 100vh;
+    padding: 20px;
 }
 
+
+/* HEADER */
+
+.header {
+    text-align: center;
+}
 
 
 .header h1 {
-
-    font-size:28px;
-
+    font-size: 28px;
 }
-
 
 
 .stats {
-
-    background:#151515;
-
-    padding:15px;
-
-    border-radius:15px;
-
-    margin-top:20px;
-
+    background: rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 15px;
+    backdrop-filter: blur(10px);
 }
-
 
 
 .stats div {
-
-    margin:10px;
-
-    font-size:18px;
-
+    margin: 8px;
+    font-size: 18px;
 }
 
 
+
+/* MINE */
 
 .mine-area {
-
-    margin-top:50px;
-
+    text-align: center;
+    margin-top: 50px;
 }
-
 
 
 #pickaxe {
 
-    width:180px;
+    width: 200px;
+    height: 200px;
 
-    height:180px;
+    border-radius: 50%;
 
-    border-radius:50%;
+    border: 3px solid #444;
 
-    border:none;
+    background:
+    linear-gradient(
+        145deg,
+        #333,
+        #111
+    );
 
-    font-size:80px;
+    font-size: 90px;
 
-    background:#202020;
+    box-shadow:
+    0 0 30px rgba(255,255,255,.15);
 
-    cursor:pointer;
-
-    transition:0.15s;
+    transition: .15s;
 
 }
-
 
 
 #pickaxe:active {
 
-    transform:scale(0.9) rotate(-10deg);
+    transform:
+    scale(.85)
+    rotate(-15deg);
 
 }
 
 
 
+/* MESSAGE */
+
 #message {
 
-    margin-top:25px;
+    height:30px;
 
     font-size:20px;
 
@@ -106,13 +102,27 @@ body {
 
 
 
+/* MENU */
+
 .menu {
 
-    margin-top:50px;
+    position: fixed;
+
+    bottom: 15px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    width:90%;
+
+    max-width:450px;
 
     display:grid;
 
-    gap:12px;
+    grid-template-columns:repeat(4,1fr);
+
+    gap:8px;
 
 }
 
@@ -120,24 +130,45 @@ body {
 
 .menu button {
 
-    padding:15px;
-
-    border-radius:15px;
+    padding:12px 5px;
 
     border:none;
 
-    background:#222;
+    border-radius:15px;
+
+    background:#1d1d1d;
 
     color:white;
 
-    font-size:18px;
+    font-size:13px;
 
 }
 
 
 
-.menu button:hover {
+/* ENERGY */
 
-    background:#333;
+.energy-bar {
+
+    margin-top:20px;
+
+    background:#222;
+
+    height:15px;
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+}
+
+
+.energy-fill {
+
+    height:100%;
+
+    width:100%;
+
+    background:#00ff88;
 
 }
