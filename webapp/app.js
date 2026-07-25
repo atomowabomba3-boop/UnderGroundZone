@@ -250,3 +250,158 @@ function showProfile(){
 
 
 loadUser();
+
+function openPage(page){
+
+
+const content =
+document.getElementById("content");
+
+
+
+if(page==="home"){
+
+
+content.innerHTML = `
+
+<div class="main-card">
+
+<h2>🏠 Home</h2>
+
+<p>
+Welcome to UndergroundZone
+</p>
+
+</div>
+
+`;
+
+}
+
+
+
+
+if(page==="giveaway"){
+
+
+content.innerHTML = `
+
+<div class="main-card">
+
+<h2>🎁 Giveaway</h2>
+
+<p>
+No active giveaway loaded yet.
+</p>
+
+
+<button>
+JOIN
+</button>
+
+
+</div>
+
+`;
+
+}
+
+
+
+
+if(page==="store"){
+
+
+content.innerHTML = `
+
+<div class="main-card">
+
+<h2>📚 Ebook Store</h2>
+
+
+<div>
+🟢 Starter Ebook
+<br>
+2 USD
+<br>
+<button>
+BUY
+</button>
+</div>
+
+
+<br>
+
+
+<div>
+🔵 Advanced Ebook
+<br>
+5 USD
+<br>
+<button>
+BUY
+</button>
+</div>
+
+
+<br>
+
+
+<div>
+🟣 Premium Ebook
+<br>
+10 USD
+<br>
+<button>
+BUY
+</button>
+</div>
+
+
+
+</div>
+
+`;
+
+}
+
+
+
+
+if(page==="profile"){
+
+
+content.innerHTML = `
+
+<div class="main-card">
+
+<h2>👤 Profile</h2>
+
+<p>
+Tickets:
+<span id="profileTickets">
+0
+</span>
+</p>
+
+
+<p>
+Level:
+1
+</p>
+
+
+<p>
+Ebooks:
+0
+</p>
+
+
+</div>
+
+`;
+
+}
+
+
+}
