@@ -418,3 +418,72 @@ async def register(user_id:int):
         "user_id":user_id
 
     }
+
+# =========================
+# EBOOK STORE
+# =========================
+
+
+ebooks = {
+
+    "tier1": {
+        "name":"🟩 Starter Ebook",
+        "price":2,
+        "tickets":50
+    },
+
+
+    "tier2": {
+        "name":"🟦 Advanced Ebook",
+        "price":5,
+        "tickets":200
+    },
+
+
+    "tier3": {
+        "name":"🟪 Ultimate Ebook",
+        "price":10,
+        "tickets":500
+    }
+
+}
+
+
+
+@app.get("/ebooks")
+async def get_ebooks():
+
+    return ebooks
+
+
+
+@app.post("/buy/{user_id}/{tier}")
+async def buy_ebook(user_id:int,tier:str):
+
+
+    if tier not in ebooks:
+
+        return {
+            "success":False,
+            "message":"Invalid ebook"
+        }
+
+
+
+    ebook = ebooks[tier]
+
+
+    add_tickets(
+        user_id,
+        ebook["tickets"]
+    )
+
+
+    return {
+
+        "success":True,
+
+        "message":
+        f"Purchased {ebook['name']} +{ebook['tickets']} tickets"
+
+    }
