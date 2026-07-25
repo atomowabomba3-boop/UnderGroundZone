@@ -12,6 +12,7 @@ from database import (
     create_user,
     get_user,
     add_tickets
+    save_language
 )
 
 
@@ -356,5 +357,41 @@ async def mine(user_id:int):
 
         "message":
         "⛏️ Nothing found..."
+
+    }
+
+
+@app.post("/language/{user_id}/{language}")
+async def change_language(
+    user_id:int,
+    language:str
+):
+
+    allowed = [
+        "en",
+        "pl",
+        "de"
+    ]
+
+
+    if language not in allowed:
+
+        return {
+            "success":False
+        }
+
+
+
+    save_language(
+        user_id,
+        language
+    )
+
+
+    return {
+
+        "success":True,
+
+        "language":language
 
     }
