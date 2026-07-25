@@ -1,15 +1,35 @@
-const tg = window.Telegram.WebApp;
+// =========================
+// TELEGRAM MINI APP
+// =========================
 
+const tg = window.Telegram.WebApp;
 
 tg.expand();
 
 
+// =========================
+// USER
+// =========================
 
-let tickets = 1;
+let userId = null;
 
-let energy = 100;
+if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+
+    userId = tg.initDataUnsafe.user.id;
+
+} else {
+
+    // test poza Telegramem
+
+    userId = 123456;
+
+}
 
 
+
+// =========================
+// ELEMENTS
+// =========================
 
 const ticketsText =
 document.getElementById("tickets");
@@ -28,24 +48,121 @@ document.getElementById("pickaxe");
 
 
 
-function update(){
+// =========================
+// DATA
+// =========================
 
-    ticketsText.innerText = tickets;
+let tickets = 0;
 
-    energyText.innerText = energy;
+let energy = 0;
+
+
+
+// =========================
+// API ADDRESS
+// =========================
+
+// jeśli Mini App i API są na tej samej domenie:
+
+const API = "";
+
+
+// jeśli będziesz miał osobny backend,
+// zmienisz np:
+// const API = "https://twoje-api.up.railway.app";
+
+
+
+
+// =========================
+// UPDATE UI
+// =========================
+
+function updateUI(){
+
+
+    ticketsText.innerText =
+    tickets;
+
+
+    energyText.innerText =
+    energy;
+
 
 }
 
 
 
 
-pickaxe.onclick = function(){
+// =========================
+// LOAD USER
+// =========================
+
+async function loadUser(){
+
+
+    try {
+
+
+        const response =
+        await fetch(
+            `${API}/user/${userId}`
+        );
+
+
+        const data =
+        await response.json();
+
+
+
+        tickets =
+        data.tickets;
+
+
+        energy =
+        data.energy;
+
+
+
+        updateUI();
+
+
+
+    }
+
+    catch(error){
+
+
+        console.log(
+            "API ERROR:",
+            error
+        );
+
+
+        message.innerText =
+        "⚠️ Connection error";
+
+    }
+
+
+}
+
+
+
+
+// =========================
+// MINING
+// =========================
+
+async function mine(){
 
 
     if(energy <= 0){
 
+
         message.innerText =
-        "⚡ No energy left!";
+        "⚡ No energy!";
+
 
         return;
 
@@ -53,42 +170,155 @@ pickaxe.onclick = function(){
 
 
 
-    energy--;
+    pickaxe.style.transform =
+    "scale(0.85) rotate(-15deg)";
 
 
 
-    let chance =
-    Math.random();
+    setTimeout(()=>{
+
+
+        pickaxe.style.transform =
+        "";
+
+
+    },150);
 
 
 
-    if(chance <= 0.01){
+
+    try {
 
 
-        tickets++;
+        const response =
+        await fetch(
+
+            `${API}/mine/${userId}`,
+
+            {
+
+                method:"POST"
+
+            }
+
+        );
+
+
+
+        const data =
+        await response.json();
+
 
 
         message.innerText =
-        "💎 Lucky find! +1 🎟️";
+        data.message;
+
+
+
+        await loadUser();
+
 
 
     }
 
-    else {
+
+    catch(error){
+
+
+        console.log(error);
 
 
         message.innerText =
-        "⛏️ Nothing found...";
-
+        "⚠️ Server error";
 
     }
 
 
-
-    update();
 
 }
 
 
 
-update();
+// =========================
+// PICKAXE CLICK
+// =========================
+
+pickaxe.addEventListener(
+    "click",
+    mine
+);
+
+
+
+
+// =========================
+// BUTTON EVENTS
+// =========================
+
+const buttons =
+document.querySelectorAll(
+    ".menu button"
+);
+
+
+
+buttons.forEach(
+(button,index)=>{
+
+
+    button.addEventListener(
+        "click",
+        ()=>{
+
+
+            if(index === 0){
+
+                message.innerText =
+                "👤 Profile";
+
+
+            }
+
+
+            if(index === 1){
+
+                message.innerText =
+                "🛒 Store coming soon";
+
+
+            }
+
+
+            if(index === 2){
+
+                message.innerText =
+                "🎁 Giveaway";
+
+
+            }
+
+
+            if(index === 3){
+
+                message.innerText =
+                "🌎 Language";
+
+
+            }
+
+
+
+        }
+    );
+
+
+});
+
+
+
+
+// =========================
+// START
+// =========================
+
+loadUser();
