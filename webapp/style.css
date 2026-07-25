@@ -1,99 +1,98 @@
+/* =========================
+   UndergroundZone Style
+========================= */
+
+
 *{
-box-sizing:border-box;
-font-family:Arial;
+    box-sizing:border-box;
 }
 
 
 body{
 
-margin:0;
+    margin:0;
 
-background:#080808;
+    padding:0;
 
-color:white;
+    font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
 
-}
+    background:
+    linear-gradient(
+        180deg,
+        #08080c,
+        #11111a
+    );
 
+    color:white;
 
-.app{
-
-max-width:500px;
-
-margin:auto;
-
-padding:20px;
-
-padding-bottom:90px;
-
-}
-
-
-
-header{
-
-text-align:center;
-
-}
-
-
-header h1{
-
-font-size:30px;
+    min-height:100vh;
 
 }
 
 
 
-header p{
-
-color:#888;
-
-}
+/* =========================
+   HEADER
+========================= */
 
 
+.header{
 
-.stats{
+    padding:20px;
 
-display:flex;
+    text-align:center;
 
-gap:10px;
+    background:
+    rgba(20,20,30,0.95);
 
-margin-top:20px;
+    border-bottom:
+    1px solid #29293a;
 
-}
+    position:sticky;
 
+    top:0;
 
-
-.card{
-
-
-flex:1;
-
-background:#181818;
-
-border-radius:20px;
-
-padding:15px;
-
-text-align:center;
+    z-index:10;
 
 }
 
 
 
-.card span{
+.header h2{
 
-color:#aaa;
+    margin:0;
+
+    font-size:26px;
 
 }
 
 
 
-.card h2{
+#user{
 
-font-size:28px;
+    margin-top:12px;
 
-margin:10px;
+    color:#bdbdbd;
+
+    font-size:14px;
+
+}
+
+
+
+
+
+/* =========================
+   CONTENT
+========================= */
+
+
+#content{
+
+    padding:15px;
 
 }
 
@@ -101,46 +100,185 @@ margin:10px;
 
 .box{
 
+    background:
 
-margin-top:20px;
+    rgba(25,25,35,0.9);
 
-background:#181818;
+    border-radius:25px;
 
-padding:20px;
+    padding:20px;
 
-border-radius:25px;
+    margin-bottom:20px;
+
+    box-shadow:
+
+    0 10px 30px rgba(0,0,0,0.4);
 
 }
 
 
 
+.box h1,
+.box h2{
+
+    text-align:center;
+
+    margin-top:0;
+
+}
+
+
+
+
+
+/* =========================
+   CARDS
+========================= */
+
+
+.card{
+
+    background:
+
+    #181824;
+
+    border-radius:22px;
+
+    padding:15px;
+
+    margin-bottom:20px;
+
+    border:
+
+    1px solid #303040;
+
+    transition:
+
+    0.2s;
+
+}
+
+
+
+.card:hover{
+
+    transform:translateY(-3px);
+
+}
+
+
+
+
+
+/* =========================
+   EBOOKS
+========================= */
+
+
+.ebook-card{
+
+    text-align:center;
+
+}
+
+
+
+.ebook-image{
+
+    width:100%;
+
+    max-height:300px;
+
+    object-fit:cover;
+
+    border-radius:20px;
+
+    margin-bottom:15px;
+
+}
+
+
+
+
+
+.ebook-card h3{
+
+    font-size:22px;
+
+    margin:10px 0;
+
+}
+
+
+
+.ebook-card p{
+
+    color:#cfcfcf;
+
+    font-size:16px;
+
+}
+
+
+
+
+
+/* =========================
+   BUTTONS
+========================= */
+
+
 button{
 
 
-width:100%;
+    width:100%;
 
-padding:15px;
-
-margin-top:12px;
+    padding:15px;
 
 
-border:0;
-
-border-radius:15px;
+    margin-top:12px;
 
 
-background:linear-gradient(
-135deg,
-#7c3aed,
-#2563eb
-);
+    border:none;
 
 
-color:white;
+    border-radius:18px;
 
-font-size:16px;
 
-font-weight:bold;
+    background:
+
+    linear-gradient(
+        135deg,
+        #6c5ce7,
+        #8e44ad
+    );
+
+
+    color:white;
+
+
+    font-size:17px;
+
+
+    font-weight:bold;
+
+
+    cursor:pointer;
+
+
+    transition:
+
+    0.2s;
+
+
+}
+
+
+
+button:hover{
+
+
+    filter:brightness(1.15);
 
 
 }
@@ -149,72 +287,113 @@ font-weight:bold;
 
 button:active{
 
-transform:scale(.95);
 
-}
-
-
-
-nav{
-
-
-position:fixed;
-
-bottom:0;
-
-left:0;
-
-right:0;
-
-
-height:70px;
-
-
-background:#111;
-
-
-display:flex;
-
-justify-content:space-around;
-
-
-padding:10px;
+    transform:scale(0.96);
 
 
 }
 
 
-nav button{
 
 
-background:none;
 
-font-size:25px;
+/* =========================
+   SPECIAL BUTTONS
+========================= */
 
-padding:5px;
 
-margin:0;
+.buy-button{
 
-width:auto;
+
+    background:
+
+    linear-gradient(
+        135deg,
+        #00b894,
+        #00cec9
+    );
+
 
 }
 
 
-.ebook-card{
 
-margin-bottom:20px;
+.back-button{
+
+
+    background:
+
+    #333344;
+
 
 }
 
 
-.ebook-image{
 
-width:100%;
 
-border-radius:20px;
 
-display:block;
+/* =========================
+   TEXT
+========================= */
 
-margin-bottom:15px;
+
+p{
+
+    line-height:1.5;
+
+}
+
+
+
+.small{
+
+    color:#999;
+
+    font-size:13px;
+
+}
+
+
+
+
+
+/* =========================
+   ANIMATION
+========================= */
+
+
+@keyframes appear{
+
+
+from{
+
+    opacity:0;
+
+    transform:
+    translateY(20px);
+
+}
+
+
+to{
+
+    opacity:1;
+
+    transform:
+    translateY(0);
+
+}
+
+
+}
+
+
+
+.box,
+.card{
+
+    animation:
+
+    appear 0.3s ease;
 
 }
