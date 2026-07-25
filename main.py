@@ -1,13 +1,12 @@
 import asyncio
 import os
 
-from dotenv import load_dotenv
-
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
+    WebAppInfo,
     CallbackQuery
 )
 
@@ -15,219 +14,74 @@ from database import (
     init_db,
     create_user,
     get_user,
-    save_language,
-    add_referral,
     get_referrals
 )
-
-from mining import mine
 
 
 # =========================
 # CONFIG
 # =========================
 
-load_dotenv()
-
 TOKEN = os.getenv("BOT_TOKEN")
 
+WEBAPP_URL = os.getenv("WEBAPP_URL")
+
+
 if not TOKEN:
-    raise ValueError("BOT_TOKEN missing!")
+    raise Exception("BOT_TOKEN missing")
 
 
-bot = Bot(TOKEN)
+if not WEBAPP_URL:
+    raise Exception("WEBAPP_URL missing")
+
+
+
+bot = Bot(
+    token=TOKEN
+)
+
 dp = Dispatcher()
 
 
-# =========================
-# DATABASE START
-# =========================
 
 init_db()
 
 
 
 # =========================
-# TRANSLATIONS
+# KEYBOARD
 # =========================
 
-TEXT = {
-
-    "en": {
-
-        "welcome":
-        """
-⛏️ <b>Welcome to UndergroundZone!</b>
-
-🎟️ Tickets: <b>{tickets}</b>
-💎 Gems: <b>{gems}</b>
-⭐ Level: <b>{level}</b>
-
-Choose an option:
-""",
-
-        "profile":
-        """
-👤 <b>Your Profile</b>
-
-🎟️ Tickets: <b>{tickets}</b>
-💎 Gems: <b>{gems}</b>
-⭐ Level: <b>{level}</b>
-
-👥 Invites: <b>{refs}</b>
-🌎 Language: <b>{lang}</b>
-""",
-
-        "language":
-        "🌎 Choose language:",
-
-        "changed":
-        "✅ Language changed!",
-
-        "ref":
-        """
-👥 <b>Your referral link</b>
-
-🔗 {link}
-
-🎟️ Reward:
-+1 ticket for every friend!
-"""
-    },
-
-
-    "pl": {
-
-        "welcome":
-        """
-⛏️ <b>Witaj w UndergroundZone!</b>
-
-🎟️ Bilety: <b>{tickets}</b>
-💎 Diamenty: <b>{gems}</b>
-⭐ Poziom: <b>{level}</b>
-
-Wybierz opcję:
-""",
-
-        "profile":
-        """
-👤 <b>Twój profil</b>
-
-🎟️ Bilety: <b>{tickets}</b>
-💎 Diamenty: <b>{gems}</b>
-⭐ Poziom: <b>{level}</b>
-
-👥 Zaproszenia: <b>{refs}</b>
-🌎 Język: <b>{lang}</b>
-""",
-
-        "language":
-        "🌎 Wybierz język:",
-
-        "changed":
-        "✅ Język zmieniony!",
-
-        "ref":
-        """
-👥 <b>Twój link zaproszenia</b>
-
-🔗 {link}
-
-🎟️ Nagroda:
-+1 bilet za znajomego!
-"""
-    }
-
-}
-
-
-
-def tr(lang, key):
-
-    if lang not in TEXT:
-        lang = "en"
-
-    return TEXT[lang][key]
-
-
-
-# =========================
-# MENU
-# =========================
-
-def menu(lang="en"):
-
-    if lang == "pl":
-
-        return InlineKeyboardMarkup(
-            inline_keyboard=[
-
-                [
-                    InlineKeyboardButton(
-                        text="⛏️ Kopalnia",
-                        callback_data="mine"
-                    ),
-
-                    InlineKeyboardButton(
-                        text="👤 Profil",
-                        callback_data="profile"
-                    )
-                ],
-
-                [
-                    InlineKeyboardButton(
-                        text="🎁 Giveaway",
-                        callback_data="giveaway"
-                    ),
-
-                    InlineKeyboardButton(
-                        text="🛒 Sklep",
-                        callback_data="store"
-                    )
-                ],
-
-                [
-                    InlineKeyboardButton(
-                        text="🌎 Język",
-                        callback_data="language"
-                    )
-                ]
-
-            ]
-        )
-
+def main_keyboard():
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
 
             [
                 InlineKeyboardButton(
-                    text="⛏️ Mine",
-                    callback_data="mine"
-                ),
+                    text="⛏️ OPEN MINE",
+                    web_app=WebAppInfo(
+                        url=WEBAPP_URL
+                    )
+                )
+            ],
 
+            [
                 InlineKeyboardButton(
                     text="👤 Profile",
                     callback_data="profile"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🎁 Giveaway",
-                    callback_data="giveaway"
                 ),
 
                 InlineKeyboardButton(
-                    text="🛒 Store",
-                    callback_data="store"
+                    text="🎁 Giveaway",
+                    callback_data="giveaway"
                 )
             ],
 
             [
                 InlineKeyboardButton(
-                    text="🌎 Language",
-                    callback_data="language"
+                    text="📚 Store",
+                    callback_data="store"
                 )
             ]
 
@@ -243,30 +97,13 @@ def menu(lang="en"):
 @dp.message(CommandStart())
 async def start(message: types.Message):
 
+
     create_user(
         message.from_user.id,
         message.from_user.username
     )
 
 
-    args = message.text.split()
-
-
-    if len(args) > 1:
-
-        try:
-
-            inviter = int(args[1])
-
-            add_referral(
-                inviter,
-                message.from_user.id
-            )
-
-        except:
-            pass
-
-
     user = get_user(
         message.from_user.id
     )
@@ -274,18 +111,27 @@ async def start(message: types.Message):
 
     await message.answer(
 
-        tr(
-            user[2],
-            "welcome"
-        ).format(
+        f"""
+⛏️ <b>UndergroundZone</b>
 
-            tickets=user[3],
-            gems=user[4],
-            level=user[5]
 
-        ),
+Welcome to the mining system!
 
-        reply_markup=menu(user[2]),
+
+🎟️ Tickets:
+<b>{user[3]}</b>
+
+💎 Gems:
+<b>{user[4]}</b>
+
+⭐ Level:
+<b>{user[5]}</b>
+
+
+Start mining below 👇
+""",
+
+        reply_markup=main_keyboard(),
 
         parse_mode="HTML"
 
@@ -294,11 +140,11 @@ async def start(message: types.Message):
 
 
 # =========================
-# PROFILE
+# TICKETS
 # =========================
 
-@dp.message(Command("profile"))
-async def profile(message: types.Message):
+@dp.message(Command("tickets"))
+async def tickets(message: types.Message):
 
     user = get_user(
         message.from_user.id
@@ -307,22 +153,11 @@ async def profile(message: types.Message):
 
     await message.answer(
 
-        tr(
-            user[2],
-            "profile"
-        ).format(
+        f"""
+🎟️ Your tickets:
 
-            tickets=user[3],
-            gems=user[4],
-            level=user[5],
-            refs=get_referrals(
-                message.from_user.id
-            ),
-            lang=user[2]
-
-        ),
-
-        reply_markup=menu(user[2]),
+<b>{user[3]}</b>
+""",
 
         parse_mode="HTML"
 
@@ -331,35 +166,46 @@ async def profile(message: types.Message):
 
 
 # =========================
-# REF LINK
+# REFERRAL
 # =========================
 
 @dp.message(Command("ref"))
-async def ref(message: types.Message):
+async def referral(message: types.Message):
 
-    info = await bot.get_me()
+
+    bot_info = await bot.get_me()
 
 
     link = (
         f"https://t.me/"
-        f"{info.username}"
+        f"{bot_info.username}"
         f"?start={message.from_user.id}"
     )
 
 
-    user = get_user(
+    refs = get_referrals(
         message.from_user.id
     )
 
 
     await message.answer(
 
-        tr(
-            user[2],
-            "ref"
-        ).format(
-            link=link
-        ),
+        f"""
+👥 <b>Your referral system</b>
+
+
+🔗 Your link:
+
+{link}
+
+
+👤 Invited:
+<b>{refs}</b>
+
+
+🎟️ Reward:
++1 ticket per person
+""",
 
         parse_mode="HTML"
 
@@ -368,121 +214,48 @@ async def ref(message: types.Message):
 
 
 # =========================
-# BUTTONS
+# PROFILE BUTTON
 # =========================
 
-@dp.callback_query()
-async def buttons(callback: CallbackQuery):
-
-    user_id = callback.from_user.id
-
-    user = get_user(user_id)
-
-    lang = user[2]
+@dp.callback_query(
+    lambda c: c.data == "profile"
+)
+async def profile(callback: CallbackQuery):
 
 
-    if callback.data == "mine":
-
-        result = mine(user_id)
-
-        await callback.answer(
-            result["message"],
-            show_alert=True
-        )
+    user = get_user(
+        callback.from_user.id
+    )
 
 
-    elif callback.data == "profile":
+    await callback.message.edit_text(
 
-        await callback.message.edit_text(
-
-            tr(
-                lang,
-                "profile"
-            ).format(
-
-                tickets=user[3],
-                gems=user[4],
-                level=user[5],
-                refs=get_referrals(user_id),
-                lang=lang
-
-            ),
-
-            reply_markup=menu(lang),
-
-            parse_mode="HTML"
-        )
+        f"""
+👤 <b>Your Profile</b>
 
 
-    elif callback.data == "language":
-
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-
-                [
-                    InlineKeyboardButton(
-                        text="🇬🇧 English",
-                        callback_data="lang_en"
-                    )
-                ],
-
-                [
-                    InlineKeyboardButton(
-                        text="🇵🇱 Polski",
-                        callback_data="lang_pl"
-                    )
-                ]
-
-            ]
-        )
+🆔 ID:
+<code>{user[0]}</code>
 
 
-        await callback.message.edit_text(
-            tr(lang,"language"),
-            reply_markup=keyboard
-        )
+🎟️ Tickets:
+<b>{user[3]}</b>
 
 
-    elif callback.data.startswith("lang_"):
-
-        new_lang = callback.data.replace(
-            "lang_",
-            ""
-        )
+💎 Gems:
+<b>{user[4]}</b>
 
 
-        save_language(
-            user_id,
-            new_lang
-        )
+⭐ Level:
+<b>{user[5]}</b>
 
+""",
 
-        await callback.message.edit_text(
+        reply_markup=main_keyboard(),
 
-            tr(
-                new_lang,
-                "changed"
-            ),
+        parse_mode="HTML"
 
-            reply_markup=menu(new_lang)
-
-        )
-
-
-    elif callback.data == "store":
-
-        await callback.message.edit_text(
-            "🛒 Store coming soon...",
-            reply_markup=menu(lang)
-        )
-
-
-    elif callback.data == "giveaway":
-
-        await callback.message.edit_text(
-            "🎁 Giveaway coming soon...",
-            reply_markup=menu(lang)
-        )
+    )
 
 
     await callback.answer()
@@ -490,14 +263,48 @@ async def buttons(callback: CallbackQuery):
 
 
 # =========================
-# RUN
+# PLACEHOLDERS
+# =========================
+
+@dp.callback_query(
+    lambda c: c.data == "store"
+)
+async def store(callback: CallbackQuery):
+
+    await callback.message.answer(
+        "📚 Store coming soon..."
+    )
+
+    await callback.answer()
+
+
+
+@dp.callback_query(
+    lambda c: c.data == "giveaway"
+)
+async def giveaway(callback: CallbackQuery):
+
+    await callback.message.answer(
+        "🎁 Giveaway system coming soon..."
+    )
+
+    await callback.answer()
+
+
+
+# =========================
+# START BOT
 # =========================
 
 async def main():
 
-    print("🚀 UndergroundZone started")
+    print(
+        "🚀 UndergroundZone bot started"
+    )
 
-    await dp.start_polling(bot)
+    await dp.start_polling(
+        bot
+    )
 
 
 
