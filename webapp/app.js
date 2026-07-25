@@ -52,35 +52,34 @@ const mineButton = document.getElementById("mine");
 
 async function loadUser(){
 
-    try{
 
-        let response = await fetch(
-            `/user/${userId}`
-        );
-
-
-        let data = await response.json();
-
-
-        document.getElementById("username").innerText =
-        "👤 " + data.username;
+    await fetch(
+        `/register/${userId}`,
+        {
+            method:"POST"
+        }
+    );
 
 
-        tickets.innerText = data.tickets;
+    let response = await fetch(
+        `/user/${userId}`
+    );
 
 
-        energy.innerText = data.energy;
+    let data = await response.json();
 
 
-    }
-    catch(e){
+    document.getElementById("username").innerText =
+    "👤 " + data.username;
 
-        console.log(e);
 
-        message.innerText =
-        "❌ Cannot load user";
+    tickets.innerText =
+    data.tickets;
 
-    }
+
+    energy.innerText =
+    data.energy;
+
 
 }
 
