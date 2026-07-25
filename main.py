@@ -17,6 +17,8 @@ from database import (
     get_user
 )
 
+from mining import mine
+
 
 # =========================
 # CONFIG
@@ -35,14 +37,14 @@ dp = Dispatcher()
 
 
 # =========================
-# DATABASE START
+# DATABASE
 # =========================
 
 init_db()
 
 
 # =========================
-# MAIN MENU
+# MENU
 # =========================
 
 def main_menu():
@@ -80,7 +82,7 @@ def main_menu():
 
 
 # =========================
-# START COMMAND
+# START
 # =========================
 
 @dp.message(CommandStart())
@@ -94,7 +96,8 @@ async def start(message: types.Message):
     user = get_user(message.from_user.id)
 
 
-    text = f"""
+    await message.answer(
+        f"""
 ⛏️ <b>Welcome to UndergroundZone!</b>
 
 🔥 Underground mining system
@@ -110,11 +113,7 @@ async def start(message: types.Message):
 
 
 Choose your action:
-"""
-
-
-    await message.answer(
-        text,
+""",
         reply_markup=main_menu(),
         parse_mode="HTML"
     )
@@ -135,12 +134,12 @@ async def help_command(message: types.Message):
 /profile - Your profile
 /help - Help
 
-Coming soon:
+Features:
 
 ⛏️ Mining
 🎁 Giveaways
 🛒 Store
-👥 Referral system
+👥 Referrals
 🌎 Languages
 """,
         parse_mode="HTML"
@@ -148,7 +147,7 @@ Coming soon:
 
 
 # =========================
-# PROFILE COMMAND
+# PROFILE
 # =========================
 
 @dp.message(Command("profile"))
@@ -156,7 +155,9 @@ async def profile(message: types.Message):
 
     user = get_user(message.from_user.id)
 
+
     if not user:
+
         create_user(
             message.from_user.id,
             message.from_user.username
@@ -190,7 +191,7 @@ async def profile(message: types.Message):
 
 
 # =========================
-# BUTTON HANDLER
+# BUTTONS
 # =========================
 
 @dp.callback_query()
@@ -199,9 +200,21 @@ async def buttons(callback: CallbackQuery):
     user_id = callback.from_user.id
 
 
-    if callback.data == "profile":
+    if callback.data == "mine":
+
+        result = mine(user_id)
+
+
+        await callback.answer(
+            result["message"],
+            show_alert=True
+        )
+
+
+    elif callback.data == "profile":
 
         user = get_user(user_id)
+
 
         await callback.message.edit_text(
             f"""
@@ -221,23 +234,15 @@ async def buttons(callback: CallbackQuery):
         )
 
 
-    elif callback.data == "mine":
-
-        await callback.answer(
-            "⛏️ Mining system is coming soon!",
-            show_alert=True
-        )
-
-
     elif callback.data == "giveaway":
 
         await callback.message.edit_text(
             """
 🎁 <b>Giveaway Center</b>
 
-No active giveaway.
+No active giveaway yet.
 
-Soon you will be able to join mega giveaways here.
+Coming soon...
 """,
             reply_markup=main_menu(),
             parse_mode="HTML"
@@ -254,7 +259,7 @@ Soon you will be able to join mega giveaways here.
 ⚡ Boosts
 💎 Gems
 
-Store coming soon.
+Coming soon...
 """,
             reply_markup=main_menu(),
             parse_mode="HTML"
@@ -265,12 +270,14 @@ Store coming soon.
 
         await callback.message.edit_text(
             """
-🌎 <b>Select Language</b>
+🌎 <b>Language</b>
 
 🇬🇧 English
 🇵🇱 Polski
 🇩🇪 Deutsch
 🇪🇸 Español
+
+Coming soon...
 """,
             reply_markup=main_menu(),
             parse_mode="HTML"
@@ -281,7 +288,7 @@ Store coming soon.
 
 
 # =========================
-# START BOT
+# RUN
 # =========================
 
 async def main():
