@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 import random
-import time
 
 from database import (
     init_db,
@@ -21,13 +23,27 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 
 
-# tymczasowo pamięć energii
-energy = {}
+# Mini App frontend
+
+app.mount(
+    "/static",
+    StaticFiles(directory="webapp"),
+    name="static"
+)
+
+
+
+@app.get("/app")
+async def app_page():
+
+    return FileResponse(
+        "webapp/index.html"
+    )
 
 
 
@@ -35,74 +51,65 @@ energy = {}
 async def home():
 
     return {
-        "status": "UndergroundZone API online"
+        "status": "UndergroundZone API running"
     }
 
 
 
+# =========================
+# USER DATA
+# =========================
+
 @app.get("/user/{user_id}")
-async def user_data(user_id:int):
-
-    user = get_user(user_id)
+async def user(user_id:int):
 
 
-    if not user:
+    data = get_user(user_id)
+
+
+    if not data:
 
         create_user(
             user_id,
-            "telegram_user"
+            "Telegram User"
         )
 
-        user = get_user(user_id)
+
+        data = get_user(user_id)
 
 
 
     return {
 
-        "id": user[0],
+        "id": data[0],
 
-        "tickets": user[3],
+        "username": data[1],
 
-        "gems": user[4],
+        "language": data[2],
 
-        "level": user[5],
+        "tickets": data[3],
 
-        "energy":
-            energy.get(user_id,100)
+        "gems": data[4],
+
+        "level": data[5],
+
+        "energy": 100
 
     }
 
 
+
+# =========================
+# MINING
+# =========================
 
 
 @app.post("/mine/{user_id}")
 async def mine(user_id:int):
 
 
-    current_energy = energy.get(
-        user_id,
-        100
-    )
-
-
-    if current_energy <= 0:
-
-        return {
-
-            "success":False,
-
-            "message":
-            "No energy"
-
-        }
-
-
-
-    energy[user_id] = current_energy - 1
-
-
-
     # 1% szansy
+
 
     if random.random() <= 0.01:
 
@@ -115,12 +122,12 @@ async def mine(user_id:int):
 
         return {
 
-            "success":True,
+            "success": True,
 
-            "reward":1,
+            "reward": 1,
 
             "message":
-            "💎 +1 Ticket"
+            "💎 Found a ticket! +1 🎟️"
 
         }
 
@@ -128,11 +135,11 @@ async def mine(user_id:int):
 
     return {
 
-        "success":True,
+        "success": True,
 
         "reward":0,
 
         "message":
-        "⛏️ Nothing found"
+        "⛏️ Nothing found..."
 
     }
