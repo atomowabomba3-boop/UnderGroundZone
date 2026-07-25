@@ -395,3 +395,26 @@ async def change_language(
         "language":language
 
     }
+
+@app.post("/register/{user_id}")
+async def register(user_id:int):
+
+
+    user = get_user(user_id)
+
+
+    if not user:
+
+        create_user(
+            user_id,
+            "Telegram User"
+        )
+
+
+    return {
+
+        "success":True,
+
+        "user_id":user_id
+
+    }
