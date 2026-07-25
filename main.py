@@ -14,10 +14,12 @@ from aiogram.types import (
 from database import (
     init_db,
     create_user,
-    get_user
+    get_user,
+    save_language
 )
 
 from mining import mine
+from languages import get_text
 
 
 # =========================
@@ -44,7 +46,7 @@ init_db()
 
 
 # =========================
-# MENU
+# MAIN MENU
 # =========================
 
 def main_menu():
@@ -95,25 +97,21 @@ async def start(message: types.Message):
 
     user = get_user(message.from_user.id)
 
+    language = user[2]
+
+
+    text = get_text(
+        language,
+        "welcome"
+    ).format(
+        tickets=user[3],
+        gems=user[4],
+        level=user[5]
+    )
+
 
     await message.answer(
-        f"""
-⛏️ <b>Welcome to UndergroundZone!</b>
-
-🔥 Underground mining system
-
-🎟️ Tickets:
-<b>{user[3]}</b>
-
-💎 Gems:
-<b>{user[4]}</b>
-
-⭐ Level:
-<b>{user[5]}</b>
-
-
-Choose your action:
-""",
+        text,
         reply_markup=main_menu(),
         parse_mode="HTML"
     )
@@ -134,12 +132,9 @@ async def help_command(message: types.Message):
 /profile - Your profile
 /help - Help
 
-Features:
-
 ⛏️ Mining
 🎁 Giveaways
 🛒 Store
-👥 Referrals
 🌎 Languages
 """,
         parse_mode="HTML"
@@ -153,45 +148,41 @@ Features:
 @dp.message(Command("profile"))
 async def profile(message: types.Message):
 
-    user = get_user(message.from_user.id)
-
+    user = get_user(
+        message.from_user.id
+    )
 
     if not user:
-
         create_user(
             message.from_user.id,
             message.from_user.username
         )
 
-        user = get_user(message.from_user.id)
+        user = get_user(
+            message.from_user.id
+        )
+
+
+    text = get_text(
+        user[2],
+        "profile"
+    ).format(
+        tickets=user[3],
+        gems=user[4],
+        level=user[5],
+        language=user[2]
+    )
 
 
     await message.answer(
-        f"""
-👤 <b>Your Profile</b>
-
-🆔 ID:
-<code>{user[0]}</code>
-
-🎟️ Tickets:
-<b>{user[3]}</b>
-
-💎 Gems:
-<b>{user[4]}</b>
-
-⭐ Level:
-<b>{user[5]}</b>
-
-🌎 Language:
-<b>{user[2]}</b>
-""",
+        text,
         reply_markup=main_menu(),
         parse_mode="HTML"
     )
 
 
 # =========================
-# BUTTONS
+# BUTTON HANDLER
 # =========================
 
 @dp.callback_query()
@@ -204,7 +195,6 @@ async def buttons(callback: CallbackQuery):
 
         result = mine(user_id)
 
-
         await callback.answer(
             result["message"],
             show_alert=True
@@ -216,19 +206,19 @@ async def buttons(callback: CallbackQuery):
         user = get_user(user_id)
 
 
+        text = get_text(
+            user[2],
+            "profile"
+        ).format(
+            tickets=user[3],
+            gems=user[4],
+            level=user[5],
+            language=user[2]
+        )
+
+
         await callback.message.edit_text(
-            f"""
-👤 <b>Your Profile</b>
-
-🎟️ Tickets:
-<b>{user[3]}</b>
-
-💎 Gems:
-<b>{user[4]}</b>
-
-⭐ Level:
-<b>{user[5]}</b>
-""",
+            text,
             reply_markup=main_menu(),
             parse_mode="HTML"
         )
@@ -268,19 +258,53 @@ Coming soon...
 
     elif callback.data == "language":
 
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🇬🇧 English",
+                        callback_data="lang_en"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🇵🇱 Polski",
+                        callback_data="lang_pl"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🇩🇪 Deutsch",
+                        callback_data="lang_de"
+                    )
+                ]
+            ]
+        )
+
+
         await callback.message.edit_text(
-            """
-🌎 <b>Language</b>
+            "🌎 Choose language:",
+            reply_markup=keyboard
+        )
 
-🇬🇧 English
-🇵🇱 Polski
-🇩🇪 Deutsch
-🇪🇸 Español
 
-Coming soon...
-""",
-            reply_markup=main_menu(),
-            parse_mode="HTML"
+    elif callback.data.startswith("lang_"):
+
+        language = callback.data.replace(
+            "lang_",
+            ""
+        )
+
+
+        save_language(
+            user_id,
+            language
+        )
+
+
+        await callback.message.edit_text(
+            "✅ Language changed!",
+            reply_markup=main_menu()
         )
 
 
