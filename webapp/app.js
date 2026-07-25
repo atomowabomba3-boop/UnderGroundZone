@@ -150,30 +150,60 @@ loadUser();
 
 
 
-function openShop(){
+async function openShop(){
 
 
-document.getElementById("content").innerHTML=`
+let response = await fetch("/ebooks");
+
+
+let ebooks = await response.json();
+
+
+
+let html = `
 
 <div class="box">
 
+<h2>
+📚 Ebook Store
+</h2>
 
-<h2>📚 Ebook Store</h2>
-
-
-<p>Coming soon...</p>
-
-
-<button>
-
-📘 Buy Starter Ebook
-
-</button>
+`;
 
 
-<button>
 
-🔥 Buy Premium Ebook
+for(let id in ebooks){
+
+
+let book = ebooks[id];
+
+
+
+html += `
+
+
+<div class="card">
+
+
+<h3>
+${book.name}
+</h3>
+
+
+<p>
+💰 ${book.price}$
+</p>
+
+
+<p>
+🎟️ +${book.tickets} tickets
+</p>
+
+
+
+<button onclick="buy('${id}')">
+
+BUY
 
 </button>
 
@@ -183,6 +213,17 @@ document.getElementById("content").innerHTML=`
 
 
 `;
+
+}
+
+
+
+html += "</div>";
+
+
+
+document.getElementById("content").innerHTML=html;
+
 
 }
 
