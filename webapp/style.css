@@ -201,3 +201,57 @@ body {
     margin-top:15px;
 
 }
+
+
+.page {
+
+    display:none;
+
+    margin-top:30px;
+
+}
+
+
+
+.shop-card {
+
+
+    background:
+    rgba(255,255,255,0.08);
+
+
+    padding:20px;
+
+
+    margin:15px 0;
+
+
+    border-radius:20px;
+
+
+    text-align:center;
+
+
+}
+
+
+
+.shop-card button {
+
+
+    background:#00ff88;
+
+
+    border:none;
+
+
+    padding:12px 30px;
+
+
+    border-radius:15px;
+
+
+    font-weight:bold;
+
+
+}
