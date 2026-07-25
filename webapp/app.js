@@ -3,9 +3,9 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 
 
-// =======================
-// USER
-// =======================
+// =========================
+// USER ID
+// =========================
 
 let userId = 123456;
 
@@ -13,7 +13,7 @@ let userId = 123456;
 if (
     tg.initDataUnsafe &&
     tg.initDataUnsafe.user
-){
+) {
 
     userId =
     tg.initDataUnsafe.user.id;
@@ -22,17 +22,26 @@ if (
 
 
 
-// =======================
-// API
-// =======================
+// =========================
+// VARIABLES
+// =========================
 
-const API = "";
+let tickets = 0;
+
+let gems = 0;
+
+let level = 1;
+
+let energy = 100;
+
+
+let canMine = true;
 
 
 
-// =======================
+// =========================
 // ELEMENTS
-// =======================
+// =========================
 
 const ticketsEl =
 document.getElementById("tickets");
@@ -63,24 +72,9 @@ document.getElementById("pickaxe");
 
 
 
-// =======================
-// DATA
-// =======================
-
-let tickets = 0;
-
-let energy = 100;
-
-let gems = 0;
-
-let level = 1;
-
-
-
-
-// =======================
-// UPDATE SCREEN
-// =======================
+// =========================
+// UPDATE UI
+// =========================
 
 function updateUI(){
 
@@ -90,7 +84,7 @@ function updateUI(){
 
 
     energyEl.innerText =
-    energy;
+    Math.floor(energy);
 
 
     gemsEl.innerText =
@@ -102,96 +96,217 @@ function updateUI(){
 
 
 
-    let percent =
-    energy;
-
-
-
     energyFill.style.width =
-    percent + "%";
+    energy + "%";
 
 
 }
 
 
 
-// =======================
-// LOAD USER
-// =======================
+// =========================
+// LOAD PLAYER
+// =========================
 
 async function loadUser(){
 
 
-try{
+    try{
 
 
-const res =
-await fetch(
-`${API}/user/${userId}`
-);
-
-
-
-const data =
-await res.json();
+        const response =
+        await fetch(
+        `/user/${userId}`
+        );
 
 
 
-tickets =
-data.tickets;
-
-
-energy =
-data.energy;
-
-
-gems =
-data.gems;
-
-
-level =
-data.level;
+        const data =
+        await response.json();
 
 
 
-updateUI();
+        tickets =
+        data.tickets;
 
 
+        gems =
+        data.gems;
+
+
+        level =
+        data.level;
+
+
+        energy =
+        data.energy;
+
+
+
+        updateUI();
+
+
+    }
+
+
+    catch(error){
+
+
+        console.log(error);
+
+
+        message.innerText =
+        "⚠️ Connection error";
+
+
+    }
 
 }
-catch(e){
-
-
-console.log(e);
-
-
-message.innerText =
-"⚠️ Server error";
-
-
-}
-
-
-}
 
 
 
-
-// =======================
+// =========================
 // MINING
-// =======================
+// =========================
 
 async function mine(){
 
 
-if(energy <= 0){
+    if(!canMine){
+
+        message.innerText =
+        "⚠️ Slow down!";
+
+        return;
+
+    }
 
 
-message.innerText =
-"⚡ No energy!";
+
+    if(energy <= 0){
 
 
-return;
+        message.innerText =
+        "⚡ No energy";
+
+
+        return;
+
+    }
+
+
+
+    canMine = false;
+
+
+
+    setTimeout(()=>{
+
+
+        canMine = true;
+
+
+    },700);
+
+
+
+
+    // kilof animation
+
+    pickaxe.style.transform =
+    "scale(0.8) rotate(-25deg)";
+
+
+
+    setTimeout(()=>{
+
+
+        pickaxe.style.transform =
+        "";
+
+
+    },150);
+
+
+
+
+
+    try{
+
+
+        const response =
+        await fetch(
+
+        `/mine/${userId}`,
+
+        {
+
+            method:"POST"
+
+        }
+
+        );
+
+
+
+        const data =
+        await response.json();
+
+
+
+
+
+        message.innerText =
+        data.message;
+
+
+
+        if(
+            data.energy !== undefined
+        ){
+
+            energy =
+            data.energy;
+
+        }
+
+
+
+        if(
+            data.reward > 0
+        ){
+
+
+            tickets += data.reward;
+
+
+            showReward(
+            "+1 🎟️"
+            );
+
+
+        }
+
+
+
+        updateUI();
+
+
+
+    }
+
+
+    catch(error){
+
+
+        console.log(error);
+
+
+        message.innerText =
+        "⚠️ Mining error";
+
+
+    }
 
 
 }
@@ -199,147 +314,81 @@ return;
 
 
 
-// animation
-
-pickaxe.style.transform =
-"scale(.8) rotate(-20deg)";
-
-
-setTimeout(()=>{
-
-
-pickaxe.style.transform =
-"";
-
-
-},150);
-
-
-
-
-
-try{
-
-
-const res =
-await fetch(
-
-`${API}/mine/${userId}`,
-
-{
-
-method:"POST"
-
-}
-
-);
-
-
-
-const data =
-await res.json();
-
-
-
-message.innerText =
-data.message;
-
-
-
-if(data.reward > 0){
-
-
-showReward(
-"+1 🎟️"
-);
-
-
-}
-
-
-
-await loadUser();
-
-
-
-}
-catch(e){
-
-
-console.log(e);
-
-
-}
-
-
-
-}
-
-
-
-
-// =======================
+// =========================
 // REWARD POPUP
-// =======================
+// =========================
 
 function showReward(text){
 
 
-const popup =
-document.createElement("div");
-
-
-popup.innerText =
-text;
-
-
-popup.style.position =
-"fixed";
-
-
-popup.style.top =
-"45%";
-
-
-popup.style.left =
-"50%";
-
-
-popup.style.transform =
-"translate(-50%,-50%)";
-
-
-popup.style.fontSize =
-"40px";
-
-
-popup.style.zIndex =
-"999";
-
-
-document.body.appendChild(
-popup
-);
+    const popup =
+    document.createElement("div");
 
 
 
-setTimeout(()=>{
+    popup.innerText =
+    text;
 
 
-popup.remove();
+
+    popup.style.position =
+    "fixed";
 
 
-},1000);
 
+    popup.style.left =
+    "50%";
+
+
+
+    popup.style.top =
+    "45%";
+
+
+
+    popup.style.transform =
+    "translate(-50%,-50%)";
+
+
+
+    popup.style.fontSize =
+    "45px";
+
+
+
+    popup.style.fontWeight =
+    "bold";
+
+
+
+    popup.style.zIndex =
+    "9999";
+
+
+
+    document.body.appendChild(
+    popup
+    );
+
+
+
+    setTimeout(()=>{
+
+
+        popup.remove();
+
+
+    },1000);
 
 
 }
 
 
 
-// =======================
-// CLICK
-// =======================
+
+// =========================
+// EVENTS
+// =========================
 
 pickaxe.addEventListener(
 "click",
@@ -348,9 +397,8 @@ mine
 
 
 
-
-// =======================
+// =========================
 // START
-// =======================
+// =========================
 
 loadUser();
