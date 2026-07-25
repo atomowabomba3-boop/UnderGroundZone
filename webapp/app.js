@@ -447,3 +447,39 @@ tier
 
 
 }
+
+
+async function changeLanguage(lang){
+
+
+    try{
+
+
+        await fetch(
+
+        `/language/${userId}/${lang}`,
+
+        {
+            method:"POST"
+        }
+
+        );
+
+
+        message.innerText =
+        "🌎 Language changed!";
+
+
+    }
+
+
+    catch(e){
+
+
+        console.log(e);
+
+
+    }
+
+
+}
