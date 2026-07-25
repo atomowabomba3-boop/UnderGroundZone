@@ -29,18 +29,30 @@
 
             <div>
                 🎟️ Tickets:
-                <span id="tickets">1</span>
+                <b id="tickets">0</b>
             </div>
 
 
             <div>
                 ⚡ Energy:
-                <span id="energy">100</span>
+                <b id="energy">100</b>
             </div>
 
         </div>
 
+
+        <div class="energy-bar">
+
+            <div 
+            class="energy-fill"
+            id="energyFill">
+            </div>
+
+        </div>
+
+
     </div>
+
 
 
 
@@ -55,7 +67,7 @@
 
 
         <p id="message">
-            Tap the pickaxe!
+            Tap the pickaxe to mine!
         </p>
 
 
@@ -63,33 +75,75 @@
 
 
 
+
+
+    <div class="profile-card">
+
+
+        <h2>
+            👤 Miner
+        </h2>
+
+
+        <p>
+            Level:
+            <b id="level">
+            1
+            </b>
+        </p>
+
+
+        <p>
+            💎 Gems:
+            <b id="gems">
+            0
+            </b>
+        </p>
+
+
+    </div>
+
+
+
+
+
     <div class="menu">
 
 
         <button>
-            👤 Profile
+            👤
+            <br>
+            Profile
         </button>
 
 
         <button>
-            🛒 Store
+            🛒
+            <br>
+            Store
         </button>
 
 
         <button>
-            🎁 Giveaway
+            🎁
+            <br>
+            Giveaway
         </button>
 
 
         <button>
-            🌎 Language
+            🌎
+            <br>
+            Language
         </button>
 
 
     </div>
 
 
+
 </div>
+
 
 
 <script src="app.js"></script>
