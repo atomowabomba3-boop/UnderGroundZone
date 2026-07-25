@@ -1,11 +1,14 @@
 import sqlite3
 
 
-DB_NAME = "underground.db"
+DB = "database.db"
 
 
-def get_db():
-    return sqlite3.connect(DB_NAME)
+
+def connect():
+
+    return sqlite3.connect(DB)
+
 
 
 
@@ -13,22 +16,27 @@ def get_db():
 # INIT DATABASE
 # =========================
 
+
 def init_db():
 
-    conn = get_db()
-    cursor = conn.cursor()
+    con = connect()
+
+    cur = con.cursor()
 
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
 
-        user_id INTEGER PRIMARY KEY,
+    # USERS
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+
+        id INTEGER PRIMARY KEY,
 
         username TEXT,
 
         language TEXT DEFAULT 'en',
 
-        tickets INTEGER DEFAULT 1,
+        tickets INTEGER DEFAULT 0,
 
         gems INTEGER DEFAULT 0,
 
@@ -38,43 +46,69 @@ def init_db():
     """)
 
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS referrals (
 
-        inviter_id INTEGER,
+    # PURCHASED EBOOKS
 
-        invited_id INTEGER UNIQUE
-
-    )
-    """)
-
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS ebooks (
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS ebooks_owned(
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
 
         user_id INTEGER,
 
-        ebook_name TEXT
+        ebook_id TEXT,
+
+        purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
     )
     """)
 
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS mining_history (
+
+    # PAYMENTS
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS payments(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
         user_id INTEGER,
 
-        time INTEGER
+        payment_id TEXT,
+
+        ebook_id TEXT,
+
+        status TEXT DEFAULT 'pending'
 
     )
     """)
 
 
-    conn.commit()
-    conn.close()
+
+    # GIVEAWAY USED TICKETS
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS giveaway_entries(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        user_id INTEGER,
+
+        giveaway_id TEXT,
+
+        tickets_used INTEGER
+
+    )
+    """)
+
+
+
+    con.commit()
+
+    con.close()
+
+
+
 
 
 
@@ -82,254 +116,153 @@ def init_db():
 # USERS
 # =========================
 
+
+
 def create_user(user_id, username):
 
-    conn = get_db()
-    cursor = conn.cursor()
+
+    con=connect()
+
+    cur=con.cursor()
 
 
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO users
-        (
-            user_id,
-            username
-        )
 
-        VALUES (?, ?)
-        """,
-
-        (
-            user_id,
-            username
-        )
+    cur.execute(
+    """
+    INSERT OR IGNORE INTO users
+    (id,username)
+    VALUES (?,?)
+    """,
+    (
+        user_id,
+        username
+    )
     )
 
 
-    conn.commit()
-    conn.close()
+    con.commit()
+
+    con.close()
+
+
 
 
 
 def get_user(user_id):
 
-    conn = get_db()
-    cursor = conn.cursor()
+
+    con=connect()
+
+    cur=con.cursor()
 
 
-    cursor.execute(
-        """
-        SELECT *
-        FROM users
-        WHERE user_id = ?
-        """,
-
+    cur.execute(
+        "SELECT * FROM users WHERE id=?",
         (user_id,)
     )
 
 
-    user = cursor.fetchone()
-
-    conn.close()
-
-    return user
+    data=cur.fetchone()
 
 
-
-# =========================
-# LANGUAGE
-# =========================
-
-def save_language(user_id, language):
-
-    conn = get_db()
-    cursor = conn.cursor()
+    con.close()
 
 
-    cursor.execute(
-        """
-        UPDATE users
-
-        SET language = ?
-
-        WHERE user_id = ?
-
-        """,
-
-        (
-            language,
-            user_id
-        )
-    )
-
-
-    conn.commit()
-    conn.close()
+    return data
 
 
 
-# =========================
-# TICKETS
-# =========================
+
+
 
 def add_tickets(user_id, amount):
 
-    conn = get_db()
-    cursor = conn.cursor()
+
+    con=connect()
+
+    cur=con.cursor()
 
 
-    cursor.execute(
-        """
-        UPDATE users
-
-        SET tickets = tickets + ?
-
-        WHERE user_id = ?
-
-        """,
-
-        (
-            amount,
-            user_id
-        )
+    cur.execute(
+    """
+    UPDATE users
+    SET tickets=tickets+?
+    WHERE id=?
+    """,
+    (
+        amount,
+        user_id
+    )
     )
 
 
-    conn.commit()
-    conn.close()
+    con.commit()
+
+    con.close()
 
 
 
-# =========================
-# GEMS
-# =========================
-
-def add_gems(user_id, amount):
-
-    conn = get_db()
-    cursor = conn.cursor()
 
 
-    cursor.execute(
-        """
-        UPDATE users
 
-        SET gems = gems + ?
+def remove_tickets(user_id, amount):
 
-        WHERE user_id = ?
 
-        """,
+    con=connect()
 
-        (
-            amount,
-            user_id
-        )
+    cur=con.cursor()
+
+
+    cur.execute(
+    """
+    UPDATE users
+    SET tickets=tickets-?
+    WHERE id=?
+    """,
+    (
+        amount,
+        user_id
+    )
     )
 
 
-    conn.commit()
-    conn.close()
+    con.commit()
+
+    con.close()
 
 
 
-# =========================
-# REFERRALS
-# =========================
-
-def add_referral(inviter_id, invited_id):
-
-    if inviter_id == invited_id:
-        return False
-
-
-    conn = get_db()
-    cursor = conn.cursor()
-
-
-    try:
-
-        cursor.execute(
-            """
-            INSERT INTO referrals
-
-            (
-                inviter_id,
-                invited_id
-            )
-
-            VALUES (?,?)
-
-            """,
-
-            (
-                inviter_id,
-                invited_id
-            )
-        )
-
-
-        cursor.execute(
-            """
-            UPDATE users
-
-            SET tickets = tickets + 1
-
-            WHERE user_id = ?
-
-            """,
-
-            (
-                inviter_id,
-            )
-        )
-
-
-        conn.commit()
-
-        result = True
-
-
-    except sqlite3.IntegrityError:
-
-        result = False
-
-
-    conn.close()
-
-
-    return result
 
 
 
-def get_referrals(user_id):
-
-    conn = get_db()
-    cursor = conn.cursor()
+def save_language(user_id, language):
 
 
-    cursor.execute(
-        """
-        SELECT COUNT(*)
+    con=connect()
 
-        FROM referrals
+    cur=con.cursor()
 
-        WHERE inviter_id = ?
 
-        """,
-
-        (
-            user_id,
-        )
+    cur.execute(
+    """
+    UPDATE users
+    SET language=?
+    WHERE id=?
+    """,
+    (
+        language,
+        user_id
+    )
     )
 
 
-    result = cursor.fetchone()[0]
+    con.commit()
+
+    con.close()
 
 
-    conn.close()
 
 
-    return result
 
 
 
@@ -337,85 +270,242 @@ def get_referrals(user_id):
 # EBOOKS
 # =========================
 
-def add_ebook(user_id, ebook_name):
-
-    conn = get_db()
-    cursor = conn.cursor()
 
 
-    cursor.execute(
-        """
-        INSERT INTO ebooks
 
-        (
-            user_id,
-            ebook_name
-        )
+def add_ebook(user_id, ebook_id):
 
-        VALUES (?,?)
 
-        """,
+    con=connect()
 
-        (
-            user_id,
-            ebook_name
-        )
+    cur=con.cursor()
+
+
+
+    cur.execute(
+    """
+    INSERT INTO ebooks_owned
+    (user_id, ebook_id)
+    VALUES (?,?)
+    """,
+    (
+        user_id,
+        ebook_id
+    )
     )
 
 
-    conn.commit()
-    conn.close()
+    con.commit()
+
+    con.close()
 
 
 
-def get_ebooks(user_id):
-
-    conn = get_db()
-    cursor = conn.cursor()
 
 
-    cursor.execute(
-        """
-        SELECT ebook_name
 
-        FROM ebooks
+def has_ebook(user_id, ebook_id):
 
-        WHERE user_id = ?
 
-        """,
+    con=connect()
 
-        (
-            user_id,
-        )
+    cur=con.cursor()
+
+
+
+    cur.execute(
+    """
+    SELECT id FROM ebooks_owned
+    WHERE user_id=? AND ebook_id=?
+    """,
+    (
+        user_id,
+        ebook_id
+    )
     )
 
 
-    result = cursor.fetchall()
+    result=cur.fetchone()
 
 
-    conn.close()
+    con.close()
 
 
-    return result
+    return result is not None
 
-def save_language(user_id, language):
 
-    conn = sqlite3.connect("bot_database.db")
 
-    cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        UPDATE users
-        SET language = ?
-        WHERE user_id = ?
-        """,
-        (
-            language,
-            user_id
-        )
+
+def get_user_ebooks(user_id):
+
+
+    con=connect()
+
+    cur=con.cursor()
+
+
+
+    cur.execute(
+    """
+    SELECT ebook_id
+    FROM ebooks_owned
+    WHERE user_id=?
+    """,
+    (user_id,)
     )
 
-    conn.commit()
 
-    conn.close()
+    data=cur.fetchall()
+
+
+    con.close()
+
+
+    return [
+        x[0]
+        for x in data
+    ]
+
+
+
+
+
+
+
+# =========================
+# PAYMENTS
+# =========================
+
+
+
+
+def create_payment(user_id,payment_id,ebook_id):
+
+
+    con=connect()
+
+    cur=con.cursor()
+
+
+    cur.execute(
+    """
+    INSERT INTO payments
+    (user_id,payment_id,ebook_id)
+    VALUES (?,?,?)
+    """,
+    (
+        user_id,
+        payment_id,
+        ebook_id
+    )
+    )
+
+
+    con.commit()
+
+    con.close()
+
+
+
+
+
+
+def complete_payment(payment_id):
+
+
+    con=connect()
+
+    cur=con.cursor()
+
+
+    cur.execute(
+    """
+    UPDATE payments
+    SET status='paid'
+    WHERE payment_id=?
+    """,
+    (payment_id,)
+    )
+
+
+    con.commit()
+
+    con.close()
+
+
+
+
+
+
+
+def get_payment(payment_id):
+
+
+    con=connect()
+
+    cur=con.cursor()
+
+
+    cur.execute(
+    """
+    SELECT *
+    FROM payments
+    WHERE payment_id=?
+    """,
+    (payment_id,)
+    )
+
+
+    data=cur.fetchone()
+
+
+    con.close()
+
+
+    return data
+
+
+
+
+
+
+
+# =========================
+# GIVEAWAYS
+# =========================
+
+
+
+
+def enter_giveaway(user_id,giveaway_id,amount):
+
+
+    remove_tickets(
+        user_id,
+        amount
+    )
+
+
+    con=connect()
+
+    cur=con.cursor()
+
+
+    cur.execute(
+    """
+    INSERT INTO giveaway_entries
+    (user_id,giveaway_id,tickets_used)
+    VALUES (?,?,?)
+    """,
+    (
+        user_id,
+        giveaway_id,
+        amount
+    )
+    )
+
+
+    con.commit()
+
+    con.close()
