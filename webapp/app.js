@@ -402,3 +402,48 @@ mine
 // =========================
 
 loadUser();
+
+function showPage(page){
+
+
+document.querySelectorAll(".page")
+.forEach(
+p=>p.style.display="none"
+);
+
+
+
+let element =
+document.getElementById(page);
+
+
+
+if(element){
+
+element.style.display="block";
+
+}
+
+
+}
+
+
+
+
+function buyEbook(tier){
+
+
+message.innerText =
+"🛒 Opening payment...";
+
+
+// tutaj później podpinamy Crypto Pay
+
+
+console.log(
+"Buying:",
+tier
+);
+
+
+}
