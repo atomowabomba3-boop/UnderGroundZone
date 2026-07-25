@@ -292,3 +292,30 @@ Change language
 
 
 loadUser();
+
+async function buy(id){
+
+
+let response = await fetch(
+
+"/buy/"+userId+"/"+id,
+
+{
+method:"POST"
+}
+
+);
+
+
+let data = await response.json();
+
+
+
+alert(data.message);
+
+
+
+loadUser();
+
+
+}
