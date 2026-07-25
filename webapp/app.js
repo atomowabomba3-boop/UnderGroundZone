@@ -1,163 +1,43 @@
-const tg = window.Telegram.WebApp;
-
-tg.expand();
-
-
-// =========================
-// USER ID
-// =========================
-
 let userId = 123456;
 
 
-if (
-    tg.initDataUnsafe &&
-    tg.initDataUnsafe.user
-) {
-
-    userId =
-    tg.initDataUnsafe.user.id;
-
-}
+const tickets = document.getElementById("tickets");
+const energy = document.getElementById("energy");
+const message = document.getElementById("message");
+const mineButton = document.getElementById("mine");
 
 
-
-// =========================
-// VARIABLES
-// =========================
-
-let tickets = 0;
-
-let gems = 0;
-
-let level = 1;
-
-let energy = 100;
-
-
-let canMine = true;
-
-
-
-// =========================
-// ELEMENTS
-// =========================
-
-const ticketsEl =
-document.getElementById("tickets");
-
-
-const energyEl =
-document.getElementById("energy");
-
-
-const gemsEl =
-document.getElementById("gems");
-
-
-const levelEl =
-document.getElementById("level");
-
-
-const energyFill =
-document.getElementById("energyFill");
-
-
-const message =
-document.getElementById("message");
-
-
-const pickaxe =
-document.getElementById("pickaxe");
-
-
-
-// =========================
-// UPDATE UI
-// =========================
-
-function updateUI(){
-
-
-    ticketsEl.innerText =
-    tickets;
-
-
-    energyEl.innerText =
-    Math.floor(energy);
-
-
-    gemsEl.innerText =
-    gems;
-
-
-    levelEl.innerText =
-    level;
-
-
-
-    energyFill.style.width =
-    energy + "%";
-
-
-}
-
-
-
-// =========================
-// LOAD PLAYER
-// =========================
+// pobranie danych użytkownika
 
 async function loadUser(){
 
-
     try{
 
-
-        const response =
-        await fetch(
-        `/user/${userId}`
+        let response = await fetch(
+            `/user/${userId}`
         );
 
 
-
-        const data =
-        await response.json();
+        let data = await response.json();
 
 
-
-        tickets =
-        data.tickets;
-
-
-        gems =
-        data.gems;
+        document.getElementById("username").innerText =
+        "👤 " + data.username;
 
 
-        level =
-        data.level;
+        tickets.innerText = data.tickets;
 
 
-        energy =
-        data.energy;
-
-
-
-        updateUI();
+        energy.innerText = data.energy;
 
 
     }
+    catch(e){
 
-
-    catch(error){
-
-
-        console.log(error);
-
+        console.log(e);
 
         message.innerText =
-        "⚠️ Connection error";
-
+        "❌ Cannot load user";
 
     }
 
@@ -165,95 +45,37 @@ async function loadUser(){
 
 
 
-// =========================
-// MINING
-// =========================
 
-async function mine(){
+// KOPANIE
 
-
-    if(!canMine){
-
-        message.innerText =
-        "⚠️ Slow down!";
-
-        return;
-
-    }
+mineButton.onclick = async function(){
 
 
-
-    if(energy <= 0){
-
-
-        message.innerText =
-        "⚡ No energy";
-
-
-        return;
-
-    }
-
-
-
-    canMine = false;
-
+    mineButton.style.transform =
+    "scale(0.8)";
 
 
     setTimeout(()=>{
 
+        mineButton.style.transform =
+        "scale(1)";
 
-        canMine = true;
-
-
-    },700);
-
-
-
-
-    // kilof animation
-
-    pickaxe.style.transform =
-    "scale(0.8) rotate(-25deg)";
-
-
-
-    setTimeout(()=>{
-
-
-        pickaxe.style.transform =
-        "";
-
-
-    },150);
-
-
+    },100);
 
 
 
     try{
 
 
-        const response =
-        await fetch(
-
-        `/mine/${userId}`,
-
-        {
-
-            method:"POST"
-
-        }
-
+        let response = await fetch(
+            `/mine/${userId}`,
+            {
+                method:"POST"
+            }
         );
 
 
-
-        const data =
-        await response.json();
-
-
-
+        let data = await response.json();
 
 
         message.innerText =
@@ -261,50 +83,14 @@ async function mine(){
 
 
 
-        if(
-            data.energy !== undefined
-        ){
-
-            energy =
-            data.energy;
-
-        }
-
-
-
-        if(
-            data.reward > 0
-        ){
-
-
-            tickets += data.reward;
-
-
-            showReward(
-            "+1 🎟️"
-            );
-
-
-        }
-
-
-
-        updateUI();
-
+        loadUser();
 
 
     }
-
-
-    catch(error){
-
-
-        console.log(error);
-
+    catch(e){
 
         message.innerText =
-        "⚠️ Mining error";
-
+        "❌ Server error";
 
     }
 
@@ -314,172 +100,113 @@ async function mine(){
 
 
 
-// =========================
-// REWARD POPUP
-// =========================
+// sklep
 
-function showReward(text){
+function showShop(){
 
 
-    const popup =
-    document.createElement("div");
+    document.getElementById("panel").innerHTML = `
 
+    <div class="card">
 
+    <h2>📚 Ebook Shop</h2>
 
-    popup.innerText =
-    text;
+    <p>Coming soon...</p>
 
+    </div>
 
-
-    popup.style.position =
-    "fixed";
-
-
-
-    popup.style.left =
-    "50%";
-
-
-
-    popup.style.top =
-    "45%";
-
-
-
-    popup.style.transform =
-    "translate(-50%,-50%)";
-
-
-
-    popup.style.fontSize =
-    "45px";
-
-
-
-    popup.style.fontWeight =
-    "bold";
-
-
-
-    popup.style.zIndex =
-    "9999";
-
-
-
-    document.body.appendChild(
-    popup
-    );
-
-
-
-    setTimeout(()=>{
-
-
-        popup.remove();
-
-
-    },1000);
-
+    `;
 
 }
 
 
 
 
-// =========================
-// EVENTS
-// =========================
+// język
 
-pickaxe.addEventListener(
-"click",
-mine
-);
+function showLanguage(){
 
 
+    document.getElementById("panel").innerHTML = `
 
-// =========================
-// START
-// =========================
+    <div class="card">
 
-loadUser();
-
-function showPage(page){
+    <h2>🌍 Language</h2>
 
 
-document.querySelectorAll(".page")
-.forEach(
-p=>p.style.display="none"
-);
+    <button onclick="changeLanguage('en')">
+    🇬🇧 English
+    </button>
 
 
+    <button onclick="changeLanguage('pl')">
+    🇵🇱 Polski
+    </button>
 
-let element =
-document.getElementById(page);
+
+    <button onclick="changeLanguage('de')">
+    🇩🇪 Deutsch
+    </button>
 
 
+    </div>
 
-if(element){
-
-element.style.display="block";
-
-}
+    `;
 
 
 }
 
 
-
-
-function buyEbook(tier){
-
-
-message.innerText =
-"🛒 Opening payment...";
-
-
-// tutaj później podpinamy Crypto Pay
-
-
-console.log(
-"Buying:",
-tier
-);
-
-
-}
 
 
 async function changeLanguage(lang){
 
 
-    try{
-
-
-        await fetch(
-
+    await fetch(
         `/language/${userId}/${lang}`,
-
         {
             method:"POST"
         }
-
-        );
-
-
-        message.innerText =
-        "🌎 Language changed!";
+    );
 
 
-    }
-
-
-    catch(e){
-
-
-        console.log(e);
-
-
-    }
+    message.innerText =
+    "🌍 Language changed";
 
 
 }
+
+
+
+
+// profil
+
+function showProfile(){
+
+
+    document.getElementById("panel").innerHTML = `
+
+    <div class="card">
+
+    <h2>👤 Profile</h2>
+
+    <p>
+    Level: 1
+    </p>
+
+
+    <p>
+    Mining rank: Beginner
+    </p>
+
+
+    </div>
+
+    `;
+
+
+}
+
+
+
+loadUser();
