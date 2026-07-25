@@ -4,6 +4,7 @@
 <head>
 
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>UndergroundZone</title>
@@ -21,124 +22,360 @@
 <div class="app">
 
 
-    <div class="header">
 
-        <h1>⛏️ UndergroundZone</h1>
+<!-- HEADER -->
 
-        <div class="stats">
+<div class="header">
 
-            <div>
-                🎟️ Tickets:
-                <b id="tickets">0</b>
-            </div>
+<h1>
+⛏️ UndergroundZone
+</h1>
 
 
-            <div>
-                ⚡ Energy:
-                <b id="energy">100</b>
-            </div>
-
-        </div>
+<div class="stats">
 
 
-        <div class="energy-bar">
-
-            <div 
-            class="energy-fill"
-            id="energyFill">
-            </div>
-
-        </div>
+<div>
+🎟️ Tickets:
+<b id="tickets">
+0
+</b>
+</div>
 
 
-    </div>
+<div>
+⚡ Energy:
+<b id="energy">
+100
+</b>
+</div>
 
+
+</div>
 
 
 
-    <div class="mine-area">
+<div class="energy-bar">
+
+<div 
+class="energy-fill"
+id="energyFill">
+
+</div>
+
+</div>
 
 
-        <button id="pickaxe">
-
-            ⛏️
-
-        </button>
-
-
-        <p id="message">
-            Tap the pickaxe to mine!
-        </p>
-
-
-    </div>
+</div>
 
 
 
 
 
-    <div class="profile-card">
+<!-- PROFILE PAGE -->
+
+<div id="profile" class="page" style="display:block;">
 
 
-        <h2>
-            👤 Miner
-        </h2>
+<div class="mine-area">
 
 
-        <p>
-            Level:
-            <b id="level">
-            1
-            </b>
-        </p>
+<button id="pickaxe">
+
+⛏️
+
+</button>
 
 
-        <p>
-            💎 Gems:
-            <b id="gems">
-            0
-            </b>
-        </p>
+<p id="message">
+Tap the pickaxe to mine!
+</p>
 
 
-    </div>
+</div>
 
 
 
+<div class="profile-card">
 
 
-    <div class="menu">
+<h2>
+👤 Miner Profile
+</h2>
 
 
-        <button>
-            👤
-            <br>
-            Profile
-        </button>
+<p>
+⭐ Level:
+<b id="level">
+1
+</b>
+</p>
 
 
-        <button>
-            🛒
-            <br>
-            Store
-        </button>
+<p>
+💎 Gems:
+<b id="gems">
+0
+</b>
+</p>
 
 
-        <button>
-            🎁
-            <br>
-            Giveaway
-        </button>
+</div>
 
 
-        <button>
-            🌎
-            <br>
-            Language
-        </button>
+</div>
 
 
-    </div>
+
+
+
+<!-- STORE PAGE -->
+
+<div id="store" class="page">
+
+
+<h2>
+🛒 Ebook Store
+</h2>
+
+
+
+<div class="shop-card">
+
+
+<h3>
+📗 Starter Ebook
+</h3>
+
+
+<p>
+💰 Price: $2
+</p>
+
+
+<p>
+🎟️ Boost: +50 tickets
+</p>
+
+
+<button onclick="buyEbook('tier1')">
+
+BUY
+
+</button>
+
+
+</div>
+
+
+
+
+
+<div class="shop-card">
+
+
+<h3>
+📘 Advanced Ebook
+</h3>
+
+
+<p>
+💰 Price: $5
+</p>
+
+
+<p>
+🎟️ Boost: +200 tickets
+</p>
+
+
+<button onclick="buyEbook('tier2')">
+
+BUY
+
+</button>
+
+
+</div>
+
+
+
+
+
+<div class="shop-card">
+
+
+<h3>
+📕 Ultimate Ebook
+</h3>
+
+
+<p>
+💰 Price: $10
+</p>
+
+
+<p>
+🎟️ Boost: +500 tickets
+</p>
+
+
+<button onclick="buyEbook('tier3')">
+
+BUY
+
+</button>
+
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+<!-- GIVEAWAY PAGE -->
+
+<div id="giveaway" class="page">
+
+
+<h2>
+🎁 Giveaway
+</h2>
+
+
+<div class="profile-card">
+
+
+<p>
+🏆 Participate in community giveaways
+</p>
+
+
+<p>
+🎟️ More tickets = higher chance
+</p>
+
+
+<button>
+
+JOIN GIVEAWAY
+
+</button>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+<!-- LANGUAGE PAGE -->
+
+<div id="language" class="page">
+
+
+<h2>
+🌎 Language
+</h2>
+
+
+
+<div class="shop-card">
+
+
+<button onclick="changeLanguage('en')">
+
+🇬🇧 English
+
+</button>
+
+
+<br><br>
+
+
+<button onclick="changeLanguage('pl')">
+
+🇵🇱 Polski
+
+</button>
+
+
+<br><br>
+
+
+<button onclick="changeLanguage('de')">
+
+🇩🇪 Deutsch
+
+</button>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+<!-- MENU -->
+
+<div class="menu">
+
+
+<button onclick="showPage('profile')">
+
+👤
+<br>
+
+Profile
+
+</button>
+
+
+
+<button onclick="showPage('store')">
+
+🛒
+<br>
+
+Store
+
+</button>
+
+
+
+<button onclick="showPage('giveaway')">
+
+🎁
+<br>
+
+Giveaway
+
+</button>
+
+
+
+<button onclick="showPage('language')">
+
+🌎
+<br>
+
+Language
+
+</button>
+
+
+
+</div>
 
 
 
