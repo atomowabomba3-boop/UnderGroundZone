@@ -1,84 +1,148 @@
+const tg = window.Telegram.WebApp;
+
+
+tg.ready();
+
+tg.expand();
+
+
+
 let userId = null;
 
 
 
-function getTelegramUser(){
+if(tg.initDataUnsafe.user){
 
-    if(window.Telegram && Telegram.WebApp){
+userId = tg.initDataUnsafe.user.id;
 
-        Telegram.WebApp.ready();
+}
+else{
 
-
-        let user =
-        Telegram.WebApp.initDataUnsafe.user;
-
-
-        if(user){
-
-            userId = user.id;
-
-            console.log(
-                "Telegram user:",
-                userId
-            );
-
-        }
-
-    }
-
-
-    // test poza Telegramem
-
-    if(!userId){
-
-        userId = 123456;
-
-    }
+userId = 1;
 
 }
 
 
 
-getTelegramUser();
-
-
-const tickets = document.getElementById("tickets");
-const energy = document.getElementById("energy");
-const message = document.getElementById("message");
-const mineButton = document.getElementById("mine");
-
-
-// pobranie danych użytkownika
 
 async function loadUser(){
 
 
-    await fetch(
-        `/register/${userId}`,
-        {
-            method:"POST"
-        }
-    );
+let response = await fetch(
+"/user/"+userId
+);
 
 
-    let response = await fetch(
-        `/user/${userId}`
-    );
+let data = await response.json();
 
 
-    let data = await response.json();
+
+document.getElementById(
+"username"
+).innerHTML=data.username;
 
 
-    document.getElementById("username").innerText =
-    "👤 " + data.username;
+
+document.getElementById(
+"tickets"
+).innerHTML=data.tickets;
 
 
-    tickets.innerText =
-    data.tickets;
+
+document.getElementById(
+"gems"
+).innerHTML=data.gems;
 
 
-    energy.innerText =
-    data.energy;
+}
+
+
+
+function home(){
+
+document.getElementById("content").innerHTML=`
+
+<div class="box">
+
+<h2>🏠 Dashboard</h2>
+
+<p>Your underground account</p>
+
+
+<button onclick="openMining()">
+⛏️ Mining
+</button>
+
+
+<button onclick="openShop()">
+📚 Ebook Store
+</button>
+
+
+<button onclick="openGiveaway()">
+🎁 Giveaway
+</button>
+
+
+</div>
+
+`;
+
+}
+
+
+
+
+function openMining(){
+
+
+document.getElementById("content").innerHTML=`
+
+<div class="box">
+
+<h2>⛏️ Mining</h2>
+
+
+<p>
+Find rare tickets underground.
+</p>
+
+
+<button onclick="mine()">
+⛏️ Dig
+</button>
+
+
+</div>
+
+`;
+
+}
+
+
+
+
+async function mine(){
+
+
+let r = await fetch(
+
+"/mine/"+userId,
+
+{
+method:"POST"
+}
+
+);
+
+
+let data = await r.json();
+
+
+alert(data.message);
+
+
+loadUser();
 
 
 }
@@ -86,322 +150,104 @@ async function loadUser(){
 
 
 
-// KOPANIE
-
-mineButton.onclick = async function(){
+function openShop(){
 
 
-    mineButton.style.transform =
-    "scale(0.8)";
+document.getElementById("content").innerHTML=`
+
+<div class="box">
 
 
-    setTimeout(()=>{
-
-        mineButton.style.transform =
-        "scale(1)";
-
-    },100);
+<h2>📚 Ebook Store</h2>
 
 
-
-    try{
-
-
-        let response = await fetch(
-            `/mine/${userId}`,
-            {
-                method:"POST"
-            }
-        );
+<p>Coming soon...</p>
 
 
-        let data = await response.json();
+<button>
+
+📘 Buy Starter Ebook
+
+</button>
 
 
-        message.innerText =
-        data.message;
+<button>
+
+🔥 Buy Premium Ebook
+
+</button>
 
 
 
-        loadUser();
+</div>
 
 
-    }
-    catch(e){
-
-        message.innerText =
-        "❌ Server error";
-
-    }
-
+`;
 
 }
 
 
 
 
-// sklep
-
-function showShop(){
+function openGiveaway(){
 
 
-    document.getElementById("panel").innerHTML = `
+document.getElementById("content").innerHTML=`
 
-    <div class="card">
+<div class="box">
 
-    <h2>📚 Ebook Shop</h2>
 
-    <p>Coming soon...</p>
+<h2>🎁 Giveaway</h2>
 
-    </div>
 
-    `;
-
-}
+<p>
+No active giveaways yet.
+</p>
 
 
 
+<button>
 
-// język
+Join
 
-function showLanguage(){
-
-
-    document.getElementById("panel").innerHTML = `
-
-    <div class="card">
-
-    <h2>🌍 Language</h2>
+</button>
 
 
-    <button onclick="changeLanguage('en')">
-    🇬🇧 English
-    </button>
+</div>
 
-
-    <button onclick="changeLanguage('pl')">
-    🇵🇱 Polski
-    </button>
-
-
-    <button onclick="changeLanguage('de')">
-    🇩🇪 Deutsch
-    </button>
-
-
-    </div>
-
-    `;
-
+`;
 
 }
 
 
 
 
-async function changeLanguage(lang){
+function profile(){
 
 
-    await fetch(
-        `/language/${userId}/${lang}`,
-        {
-            method:"POST"
-        }
-    );
+document.getElementById("content").innerHTML=`
+
+<div class="box">
+
+<h2>👤 Profile</h2>
 
 
-    message.innerText =
-    "🌍 Language changed";
+<p>
+Language: English 🌐
+</p>
 
 
-}
+<button>
+Change language
+</button>
 
 
+</div>
 
-
-// profil
-
-function showProfile(){
-
-
-    document.getElementById("panel").innerHTML = `
-
-    <div class="card">
-
-    <h2>👤 Profile</h2>
-
-    <p>
-    Level: 1
-    </p>
-
-
-    <p>
-    Mining rank: Beginner
-    </p>
-
-
-    </div>
-
-    `;
-
+`;
 
 }
 
 
 
 loadUser();
-
-function openPage(page){
-
-
-const content =
-document.getElementById("content");
-
-
-
-if(page==="home"){
-
-
-content.innerHTML = `
-
-<div class="main-card">
-
-<h2>🏠 Home</h2>
-
-<p>
-Welcome to UndergroundZone
-</p>
-
-</div>
-
-`;
-
-}
-
-
-
-
-if(page==="giveaway"){
-
-
-content.innerHTML = `
-
-<div class="main-card">
-
-<h2>🎁 Giveaway</h2>
-
-<p>
-No active giveaway loaded yet.
-</p>
-
-
-<button>
-JOIN
-</button>
-
-
-</div>
-
-`;
-
-}
-
-
-
-
-if(page==="store"){
-
-
-content.innerHTML = `
-
-<div class="main-card">
-
-<h2>📚 Ebook Store</h2>
-
-
-<div>
-🟢 Starter Ebook
-<br>
-2 USD
-<br>
-<button>
-BUY
-</button>
-</div>
-
-
-<br>
-
-
-<div>
-🔵 Advanced Ebook
-<br>
-5 USD
-<br>
-<button>
-BUY
-</button>
-</div>
-
-
-<br>
-
-
-<div>
-🟣 Premium Ebook
-<br>
-10 USD
-<br>
-<button>
-BUY
-</button>
-</div>
-
-
-
-</div>
-
-`;
-
-}
-
-
-
-
-if(page==="profile"){
-
-
-content.innerHTML = `
-
-<div class="main-card">
-
-<h2>👤 Profile</h2>
-
-<p>
-Tickets:
-<span id="profileTickets">
-0
-</span>
-</p>
-
-
-<p>
-Level:
-1
-</p>
-
-
-<p>
-Ebooks:
-0
-</p>
-
-
-</div>
-
-`;
-
-}
-
-
-}
