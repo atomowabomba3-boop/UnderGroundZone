@@ -1,6 +1,3 @@
-aiogram==3.13.1
-aiohttp
-fastapi
-uvicorn
-python-dotenv
-sqlalchemy
+flask
+gunicorn
+sqlite3-binary
