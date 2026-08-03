@@ -1,9 +1,66 @@
-// Frontend logic for UnderGroundZone (updated: modal, admin panel, emojis)
+// Frontend logic with i18n and auto-detect Telegram ID
 const API = window.location.origin;
 
-function qs(id){return document.getElementById(id)}
+const TRANSLATIONS = {
+  en: {
+    title: 'UnderGroundZone',
+    header: '✨ UnderGroundZone',
+    user: '👤 Telegram ID:',
+    tickets: '🎟️ Tickets:',
+    refs: '📣 Referrals:',
+    ebooks: '📚 Ebooks',
+    ranking: '🏆 Ranking',
+    adminPanel: '🔒 Admin Panel',
+    buy: '✨ Buy',
+    grantFree: '🎁 Grant free',
+    refresh: 'Refresh 🔄',
+    buyModalTitle: '🛒 Buy ebook',
+    buyModalPrompt: 'Select payment mode:',
+    paySim: 'Pay (simulation)',
+    payReal: 'Pay (real)'
+  },
+  pl: {
+    title: 'UnderGroundZone',
+    header: '✨ UnderGroundZone',
+    user: '👤 Telegram ID:',
+    tickets: '🎟️ Bilety:',
+    refs: '📣 Polecenia:',
+    ebooks: '📚 Ebooki',
+    ranking: '🏆 Ranking',
+    adminPanel: '🔒 Panel Admina',
+    buy: '✨ Kup',
+    grantFree: '🎁 Przyznaj za darmo',
+    refresh: 'Odśwież 🔄',
+    buyModalTitle: '🛒 Kup ebook',
+    buyModalPrompt: 'Wybierz sposób płatności:',
+    paySim: 'Płatność (symulacja)',
+    payReal: 'Płatność (na żywo)'
+  }
+};
 
+function qs(id){return document.getElementById(id)}
 function el(tag, cls){ const e = document.createElement(tag); if(cls) e.className = cls; return e }
+
+function t(key){
+  const lang = localStorage.getItem('ugz_lang') || 'en';
+  return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS['en'][key] || key;
+}
+
+function applyTranslations(){
+  qs('site-title').textContent = t('title');
+  qs('header-title').textContent = t('header');
+  qs('label-user').textContent = t('user');
+  qs('label-tickets').textContent = t('tickets');
+  qs('label-refs').textContent = t('refs');
+  qs('label-ebooks').textContent = t('ebooks');
+  qs('label-ranking').textContent = t('ranking');
+  qs('admin-title').textContent = t('adminPanel');
+  qs('modal-title').textContent = t('buyModalTitle');
+  qs('modal-prompt').textContent = t('buyModalPrompt');
+  qs('modal-buy-sim').textContent = t('paySim');
+  qs('modal-buy-real').textContent = t('payReal');
+  qs('refresh').textContent = t('refresh');
+}
 
 async function loadEbooks(telegram_id, isAdmin=false){
   const res = await fetch('/ebooks');
@@ -17,20 +74,19 @@ async function loadEbooks(telegram_id, isAdmin=false){
       <h4>${e.title}</h4>
       <p>💲 ${e.price_usd} — 🎟️ ${priceToTickets(e.price_usd)} tickets</p>
       <div class="ebook-actions">
-        <button class="buy" data-id="${e.id}">✨ Buy</button>
-        ${isAdmin?'<button class="buy-free" data-id="'+e.id+'">🎁 Grant free</button>':''}
+        <button class="buy" data-id="${e.id}">${t('buy')}</button>
+        ${isAdmin?`<button class="buy-free" data-id="${e.id}">${t('grantFree')}</button>`:''}
       </div>
     `;
     container.appendChild(card);
   });
-  // attach listeners
+  // listeners
   document.querySelectorAll('.buy').forEach(b=>b.addEventListener('click', async (evt)=>{
     const id = evt.currentTarget.dataset.id;
     openBuyModal(id, telegram_id);
   }));
   document.querySelectorAll('.buy-free').forEach(b=>b.addEventListener('click', async (evt)=>{
     const id = evt.currentTarget.dataset.id;
-    // admin free award
     const r = await fetch('/admin/award-free', {method:'POST', headers:{'Content-Type':'application/json','X-ADMIN-ID':telegram_id}, body: JSON.stringify({telegram_id, ebook_id: id})});
     const j = await r.json();
     alert(JSON.stringify(j));
@@ -45,7 +101,6 @@ function priceToTickets(price){
   return Math.round(price*25);
 }
 
-// modal
 function openBuyModal(ebook_id, telegram_id){
   const modal = qs('modal');
   modal.style.display='block';
@@ -63,10 +118,7 @@ function openBuyModal(ebook_id, telegram_id){
     const body = { telegram_id, ebook_id: parseInt(ebook_id), mode: 'real' };
     const r = await fetch('/checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     const j = await r.json();
-    if(j.order_token && j.payment_link){
-      // open payment link (stub)
-      window.open(j.payment_link, '_blank');
-    }
+    if(j.order_token && j.payment_link){ window.open(j.payment_link, '_blank'); }
     alert(JSON.stringify(j));
     refresh(telegram_id);
   };
@@ -92,16 +144,10 @@ async function refresh(telegram_id){
     qs('telegram-id').textContent = telegram_id;
     qs('tickets').textContent = data.user.tickets;
     qs('refs').textContent = data.user.referrals;
-    const isAdmin = (String(telegram_id) === (qs('admin-id')?.value || '')) || false;
+    const isAdmin = !!data.user.is_admin;
     await loadEbooks(telegram_id, isAdmin);
     await loadRanking();
-    // show admin panel if admin
-    if(String(telegram_id) === qs('admin-id').value){
-      qs('admin-panel').style.display='block';
-      loadAdminPanel(telegram_id);
-    } else {
-      qs('admin-panel').style.display='none';
-    }
+    if(isAdmin){ qs('admin-panel').style.display='block'; loadAdminPanel(telegram_id); } else { qs('admin-panel').style.display='none'; }
   }
 }
 
@@ -124,39 +170,56 @@ async function loadAdminPanel(telegram_id){
   }));
 }
 
-// Telegram Web App detection - handle safely and avoid throwing when opened outside Telegram
+// Detect Telegram ID automatically
 function detectTelegramId(){
   try{
-    if(window.Telegram && window.Telegram.WebApp){
-      try{
-        // when opened inside Telegram WebApp, initDataUnsafe should be available
-        const init = window.Telegram.WebApp.initDataUnsafe;
-        if(init && init.user && init.user.id) return String(init.user.id);
-        // sometimes only user object available via initData
-        if(window.Telegram.WebApp?.initData) return null;
-      }catch(e){
-        console.warn('Telegram WebApp exists but could not read initDataUnsafe', e);
+    const W = window.Telegram?.WebApp;
+    if(W){
+      const initUnsafe = W.initDataUnsafe;
+      if(initUnsafe && initUnsafe.user && initUnsafe.user.id) return String(initUnsafe.user.id);
+      const raw = W.initData;
+      if(raw){
+        try{
+          const params = new URLSearchParams(raw);
+          if(params.has('user')){
+            try{ const u = JSON.parse(params.get('user')); if(u && u.id) return String(u.id); }catch(e){}
+          }
+          if(params.has('id')) return params.get('id');
+        }catch(e){}
       }
     }
-  }catch(e){/* ignore */}
-  // fallback to URL param
+  }catch(e){}
   const url = new URL(window.location.href);
-  return url.searchParams.get('telegram_id') || url.searchParams.get('id');
+  return url.searchParams.get('telegram_id') || null;
+}
+
+// Language selector
+function initLanguage(){
+  const sel = qs('lang-select');
+  const saved = localStorage.getItem('ugz_lang') || 'en';
+  sel.value = saved;
+  applyTranslations();
+  sel.addEventListener('change', ()=>{
+    localStorage.setItem('ugz_lang', sel.value);
+    applyTranslations();
+    // re-render ebooks (they use t() when rendering)
+    const telegram_id = qs('telegram-id').textContent || null;
+    if(telegram_id && telegram_id !== '-') refresh(telegram_id);
+  });
 }
 
 window.addEventListener('load', async ()=>{
+  initLanguage();
   let telegram_id = detectTelegramId();
   if(!telegram_id){
-    const manual = prompt('Enter your telegram_id for testing:');
-    if(!manual) return;
-    telegram_id = manual;
+    document.body.innerHTML = `<div style="padding:20px;font-family:sans-serif;">${t('header')}<br/><br/>Open this page from the Telegram bot (Web App) or add ?telegram_id=YOUR_ID to the URL for testing.</div>`;
+    return;
   }
-  // call /start to register (idempotent)
-  try{ await fetch('/start',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({telegram_id}) }); }catch(e){console.warn('start failed', e)}
-  // store admin id field from server-side env (injected by template)
+  const initData = window.Telegram?.WebApp?.initData || null;
+  try{ await fetch('/start',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({telegram_id, init_data: initData}) }); }catch(e){console.warn('start failed', e)}
   try{ const resp = await fetch('/_config'); if(resp.ok){ const cfg = await resp.json(); if(cfg.ADMIN_TELEGRAM_ID) qs('admin-id').value = String(cfg.ADMIN_TELEGRAM_ID); } }catch(e){console.warn('config fetch failed', e)}
+  applyTranslations();
   await refresh(telegram_id);
   qs('refresh').addEventListener('click', ()=>refresh(telegram_id));
-  // modal close
   qs('modal-close').addEventListener('click', ()=>{ qs('modal').style.display='none'; });
 });
