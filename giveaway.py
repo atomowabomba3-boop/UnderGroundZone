@@ -3,6 +3,8 @@ import os
 from datetime import datetime, timedelta
 import secrets
 
+GHOST_THRESHOLD = 1500  # cents ($15)
+
 class GiveawayManager:
     def __init__(self, db):
         self.db = db
@@ -29,9 +31,16 @@ class GiveawayManager:
         self.db.conn.commit()
 
     def start(self, duration_minutes=None):
+        # enforce ghost threshold
+        state = self._state()
+        if not state:
+            return False
+        if state.get('pool_cents', 0) < GHOST_THRESHOLD:
+            return False
         cur = self.db.conn.cursor()
         cur.execute('UPDATE giveaway_state SET is_active = 1, started_at = ?, duration_minutes = ? WHERE id = 1', (datetime.utcnow().isoformat(), duration_minutes))
         self.db.conn.commit()
+        return True
 
     def join(self, telegram_id, cost=1):
         state = self._state()
