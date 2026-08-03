@@ -186,7 +186,7 @@ def send_webapp_button():
     data = request.get_json() or {}
     chat_id = data.get('chat_id')
     webapp_url = data.get('webapp_url')
-    text = data.get('text', 'Otwórz Mini App')
+    text = data.get('text', 'Open Mini App')
     if not chat_id or not webapp_url:
         return jsonify({'error': 'chat_id and webapp_url required'}), 400
 
@@ -284,6 +284,20 @@ def giveaway_join():
 def giveaway_end():
     result = giveaway.end()
     return jsonify(result)
+
+# SPA fallback: serve index.html for non-API GET paths (fix Telegram WebApp 404s)
+def is_api_path(path):
+    for p in ['_config', 'ebooks', 'ebook', 'checkout', 'orders', 'admin', 'giveaway', 'send-webapp-button', 'start', 'me', 'referral', 'ranking', 'buy-ebook']:
+        if path.startswith(p):
+            return True
+    return False
+
+@app.route('/<path:path>', methods=['GET'])
+def spa_fallback(path):
+    # If path looks like an API endpoint or static file, return 404 so normal routing applies
+    if is_api_path(path) or '.' in path:
+        return abort(404)
+    return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
