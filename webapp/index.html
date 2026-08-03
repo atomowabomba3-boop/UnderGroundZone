@@ -3,25 +3,35 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UnderGroundZone</title>
+  <title id="site-title">UnderGroundZone</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <div class="container">
-    <h1>✨ UnderGroundZone</h1>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h1 id="header-title">✨ UnderGroundZone</h1>
+      <div>
+        <label for="lang-select" style="margin-right:6px">Language</label>
+        <select id="lang-select" aria-label="Language selector">
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
+        </select>
+      </div>
+    </div>
+
     <div id="user-info">
-      <p>👤 Telegram ID: <span id="telegram-id">-</span></p>
-      <p>🎟️ Tickets: <span id="tickets">-</span></p>
-      <p>📣 Referrals: <span id="refs">-</span></p>
+      <p><span id="label-user">👤 Telegram ID:</span> <span id="telegram-id">-</span></p>
+      <p><span id="label-tickets">🎟️ Tickets:</span> <span id="tickets">-</span></p>
+      <p><span id="label-refs">📣 Referrals:</span> <span id="refs">-</span></p>
     </div>
 
     <section>
-      <h2>📚 Ebooks</h2>
+      <h2 id="label-ebooks">📚 Ebooks</h2>
       <div id="ebooks"></div>
     </section>
 
     <section>
-      <h2>🏆 Ranking</h2>
+      <h2 id="label-ranking">🏆 Ranking</h2>
       <ol id="ranking"></ol>
     </section>
 
@@ -34,7 +44,7 @@
 
     <!-- Admin panel -->
     <div id="admin-panel" style="display:none; margin-top:20px; background:#071026; padding:12px; border-radius:8px;">
-      <h3>🔒 Admin Panel</h3>
+      <h3 id="admin-title">🔒 Admin Panel</h3>
       <div id="admin-users"></div>
     </div>
   </div>
@@ -43,8 +53,8 @@
   <div id="modal" class="modal" style="display:none;">
     <div class="modal-content">
       <span id="modal-close" class="modal-close">✖</span>
-      <h3>🛒 Buy ebook</h3>
-      <p>Select payment mode:</p>
+      <h3 id="modal-title">🛒 Buy ebook</h3>
+      <p id="modal-prompt">Select payment mode:</p>
       <button id="modal-buy-sim">Pay (simulation)</button>
       <button id="modal-buy-real">Pay (real)</button>
     </div>
