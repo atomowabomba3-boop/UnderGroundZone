@@ -2,7 +2,7 @@
 
 Projekt Telegram Mini App — backend (Flask) + frontend (simple HTML/JS). Gotowy do wdrożenia na Railway.
 
-Pliki:
+Pliki
 - api.py — główny Flask app z endpointami
 - database.py — SQLite wrapper i helpery
 - giveaway.py — logika giveaway (start/join/end, wybór zwycięzcy)
