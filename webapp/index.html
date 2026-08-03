@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,25 +8,48 @@
 </head>
 <body>
   <div class="container">
-    <h1>UnderGroundZone</h1>
+    <h1>✨ UnderGroundZone</h1>
     <div id="user-info">
-      <p>Telegram ID: <span id="telegram-id">-</span></p>
-      <p>Bilety: <span id="tickets">-</span></p>
-      <p>Refsy: <span id="refs">-</span></p>
+      <p>👤 Telegram ID: <span id="telegram-id">-</span></p>
+      <p>🎟️ Bilety: <span id="tickets">-</span></p>
+      <p>📣 Refsy: <span id="refs">-</span></p>
     </div>
 
     <section>
-      <h2>Ebooki</h2>
+      <h2>📚 Ebooki</h2>
       <div id="ebooks"></div>
     </section>
 
     <section>
-      <h2>Ranking</h2>
+      <h2>🏆 Ranking</h2>
       <ol id="ranking"></ol>
     </section>
 
-    <button id="refresh">Odśwież</button>
+    <div style="margin-top:12px">
+      <button id="refresh">Odśwież 🔄</button>
+    </div>
+
+    <!-- Admin hidden config -->
+    <input type="hidden" id="admin-id" value="">
+
+    <!-- Admin panel -->
+    <div id="admin-panel" style="display:none; margin-top:20px; background:#071026; padding:12px; border-radius:8px;">
+      <h3>🔒 Panel Admina</h3>
+      <div id="admin-users"></div>
+    </div>
   </div>
+
+  <!-- Buy Modal -->
+  <div id="modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span id="modal-close" class="modal-close">✖</span>
+      <h3>🛒 Kup ebook</h3>
+      <p>Wybierz tryb płatności:</p>
+      <button id="modal-buy-sim">Zapłać (symulacja)</button>
+      <button id="modal-buy-real">Zapłać (płatność)</button>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>

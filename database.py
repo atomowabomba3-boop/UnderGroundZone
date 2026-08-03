@@ -43,6 +43,18 @@ class Database:
         )
         ''')
 
+        cur.execute('''
+        CREATE TABLE IF NOT EXISTS orders (
+            order_token TEXT PRIMARY KEY,
+            telegram_id TEXT,
+            ebook_id INTEGER,
+            amount_cents INTEGER,
+            mode TEXT,
+            status TEXT,
+            created_at TEXT
+        )
+        ''')
+
         self.conn.commit()
         # ensure single row for giveaway
         cur.execute('SELECT COUNT(*) as c FROM giveaway_state')
@@ -167,6 +179,34 @@ class Database:
             item['ebooks_owned'] = json.loads(item.get('ebooks_owned') or '[]')
             results.append(item)
         return results
+
+    # orders
+    def create_order(self, telegram_id, ebook_id, amount_cents, mode='simulate'):
+        order_token = secrets.token_urlsafe(16)
+        now = datetime.utcnow().isoformat()
+        cur = self.conn.cursor()
+        cur.execute('INSERT INTO orders (order_token, telegram_id, ebook_id, amount_cents, mode, status, created_at) VALUES (?,?,?,?,?,?,?)', (order_token, str(telegram_id), int(ebook_id), int(amount_cents), mode, 'pending', now))
+        self.conn.commit()
+        return order_token
+
+    def get_order(self, order_token):
+        cur = self.conn.cursor()
+        cur.execute('SELECT * FROM orders WHERE order_token = ?', (order_token,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        return dict(row)
+
+    def mark_order_paid(self, order_token):
+        cur = self.conn.cursor()
+        cur.execute('UPDATE orders SET status = ? WHERE order_token = ?', ('paid', order_token))
+        self.conn.commit()
+
+    def list_orders(self):
+        cur = self.conn.cursor()
+        cur.execute('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200')
+        rows = cur.fetchall()
+        return [dict(r) for r in rows]
 
 # sqlite helpers
 
