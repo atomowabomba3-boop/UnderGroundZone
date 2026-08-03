@@ -1,0 +1,7 @@
+{
+  "ebooks": [
+    { "id": 1, "title": "Intro to UnderGroundZone", "price_usd": 2, "filename": "intro.pdf", "image": "/images/intro.jpg" },
+    { "id": 2, "title": "Deep Dives", "price_usd": 5, "filename": "deep.pdf", "image": "/images/deep.jpg" },
+    { "id": 3, "title": "Masterclass", "price_usd": 10, "filename": "master.pdf", "image": "/images/master.jpg" }
+  ]
+}

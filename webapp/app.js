@@ -1,665 +1,77 @@
-const API = "";
+// Frontend logic for UnderGroundZone
+const API = window.location.origin;
 
-let userId = null;
+function qs(id){return document.getElementById(id)}
 
+async function loadEbooks(telegram_id){
+  const res = await fetch('/ebooks');
+  const data = await res.json();
+  const container = qs('ebooks');
+  container.innerHTML='';
+  data.ebooks.forEach(e=>{
+    const el = document.createElement('div'); el.className='ebook';
+    el.innerHTML = `<h4>${e.title}</h4><p>Price: $${e.price_usd}</p><button data-id="${e.id}">Buy (simulate)</button>`;
+    const btn = el.querySelector('button');
+    btn.addEventListener('click', async ()=>{
+      // Simulate payment webhook by calling /buy-ebook directly (for demo)
+      const amount = e.price_usd;
+      const body = { telegram_id, ebook_id: e.id, amount_usd: amount };
+      const r = await fetch('/buy-ebook', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const j = await r.json();
+      alert(JSON.stringify(j));
+      refresh(telegram_id);
+    });
+    container.appendChild(el);
+  })
+}
 
+async function loadRanking(){
+  const res = await fetch('/ranking');
+  const data = await res.json();
+  const ol = qs('ranking');
+  ol.innerHTML='';
+  data.ranking.forEach(u=>{
+    const li = document.createElement('li');
+    li.textContent = `${u.telegram_id} — refs: ${u.referrals} — tickets: ${u.tickets}`;
+    ol.appendChild(li);
+  })
+}
 
-// =========================
-// TELEGRAM
-// =========================
+async function refresh(telegram_id){
+  if(!telegram_id) return;
+  const res = await fetch(`/me?telegram_id=${telegram_id}`);
+  if(res.status===200){
+    const data = await res.json();
+    qs('telegram-id').textContent = telegram_id;
+    qs('tickets').textContent = data.user.tickets;
+    qs('refs').textContent = data.user.referrals;
+  }
+  await loadEbooks(telegram_id);
+  await loadRanking();
+}
 
-
-if(window.Telegram && Telegram.WebApp){
-
-    Telegram.WebApp.ready();
-
-    Telegram.WebApp.expand();
-
-
-    let user = Telegram.WebApp.initDataUnsafe.user;
-
-
-    if(user){
-
-        userId = user.id;
-
+// Telegram Mini App detection - try initDataUnsafe or query param
+function detectTelegramId(){
+  try{
+    if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe){
+      return window.Telegram.WebApp.initDataUnsafe.user.id;
     }
-
+  }catch(e){}
+  const url = new URL(window.location.href);
+  return url.searchParams.get('telegram_id') || url.searchParams.get('id');
 }
 
-
-
-if(!userId){
-
-    userId = 123456;
-
-}
-
-
-
-
-
-// =========================
-// START
-// =========================
-
-
-async function start(){
-
-    await loadUser();
-
-    openHome();
-
-}
-
-
-
-start();
-
-
-
-
-
-
-
-// =========================
-// USER
-// =========================
-
-
-async function loadUser(){
-
-
-    let res = await fetch(
-        API+"/user/"+userId
-    );
-
-
-    let data = await res.json();
-
-
-
-    document.getElementById("user").innerHTML = `
-
-    👤 ${data.username}
-
-    <br>
-
-    🎟️ Tickets: ${data.tickets}
-
-    <br>
-
-    💎 Gems: ${data.gems}
-
-    `;
-
-
-}
-
-
-
-
-
-
-
-
-// =========================
-// HOME
-// =========================
-
-
-function openHome(){
-
-
-document.getElementById("content").innerHTML = `
-
-
-<div class="box">
-
-
-<h1>
-⛏️ UndergroundZone
-</h1>
-
-
-<h2>
-💰 Current Giveaway
-</h2>
-
-
-
-<div id="giveaway">
-
-Loading...
-
-</div>
-
-
-
-<br>
-
-
-<button onclick="openShop()">
-
-📚 Ebook Store
-
-</button>
-
-
-
-<button onclick="openMyEbooks()">
-
-📖 My ebooks
-
-</button>
-
-
-
-<button onclick="openProfile()">
-
-👤 Profile
-
-</button>
-
-
-
-</div>
-
-
-`;
-
-
-
-loadGiveaway();
-
-
-}
-
-
-
-
-
-
-
-// =========================
-// GIVEAWAY
-// =========================
-
-
-async function loadGiveaway(){
-
-
-let res = await fetch(
-API+"/giveaway"
-);
-
-
-let data = await res.json();
-
-
-
-let box=document.getElementById(
-"giveaway"
-);
-
-
-
-if(!data.active){
-
-
-box.innerHTML=`
-
-<p>
-No active giveaway
-</p>
-
-`;
-
-return;
-
-}
-
-
-
-
-box.innerHTML=`
-
-<div class="card">
-
-
-<h2>
-💰 $${data.prize}
-</h2>
-
-
-<p>
-👥 Participants:
-${data.participants}
-</p>
-
-
-<p>
-⏳ Ends:
-${data.end}
-</p>
-
-
-<button onclick="joinGiveaway()">
-
-🎁 JOIN GIVEAWAY
-
-</button>
-
-
-</div>
-
-`;
-
-
-
-}
-
-
-
-
-
-
-async function joinGiveaway(){
-
-
-let res=await fetch(
-
-API+
-"/join-giveaway/"
-+
-userId,
-
-{
-
-method:"POST"
-
-}
-
-);
-
-
-
-let data=await res.json();
-
-
-
-alert(data.message);
-
-
-
-loadUser();
-
-
-loadGiveaway();
-
-
-}
-
-
-
-
-
-
-
-
-// =========================
-// SHOP
-// =========================
-
-
-async function openShop(){
-
-
-let res=await fetch(
-API+"/ebooks"
-);
-
-
-let books=await res.json();
-
-
-
-let html=`
-
-<div class="box">
-
-
-<h2>
-📚 Ebook Store
-</h2>
-
-`;
-
-
-
-for(let id in books){
-
-
-let b=books[id];
-
-
-
-html+=`
-
-<div class="card">
-
-
-<img class="ebook-image"
-src="${b.image}">
-
-
-<h3>
-${b.name}
-</h3>
-
-
-<p>
-💰 ${b.price} USD
-</p>
-
-
-<p>
-🎟️ +${b.tickets} tickets
-</p>
-
-
-<button onclick="buy('${id}')">
-
-💳 BUY
-
-</button>
-
-
-</div>
-
-`;
-
-}
-
-
-
-html+=`
-
-<button onclick="openHome()">
-
-⬅️ Back
-
-</button>
-
-
-</div>
-
-`;
-
-
-
-document.getElementById("content").innerHTML=html;
-
-
-}
-
-
-
-
-
-
-
-
-async function buy(id){
-
-
-let res=await fetch(
-
-API+
-"/testbuy/"
-+
-userId
-+
-"/"
-+
-id,
-
-{
-
-method:"POST"
-
-}
-
-);
-
-
-
-let data=await res.json();
-
-
-
-alert(data.message);
-
-
-loadUser();
-
-
-}
-
-
-
-
-
-
-
-
-
-// =========================
-// MY EBOOKS
-// =========================
-
-
-async function openMyEbooks(){
-
-
-let res=await fetch(
-
-API+
-"/myebooks/"
-+
-userId
-
-);
-
-
-
-let books=await res.json();
-
-
-
-let html=`
-
-<div class="box">
-
-<h2>
-📖 My ebooks
-</h2>
-
-`;
-
-
-
-if(books.length===0){
-
-
-html+=`
-
-<p>
-No ebooks yet
-</p>
-
-`;
-
-}
-
-
-else{
-
-
-books.forEach(b=>{
-
-
-html+=`
-
-<div class="card">
-
-
-<img class="ebook-image"
-src="${b.image}">
-
-
-<h3>
-${b.name}
-</h3>
-
-
-<button onclick="downloadBook('${b.file}')">
-
-⬇️ Download
-
-</button>
-
-
-</div>
-
-
-`;
-
-
+window.addEventListener('load', async ()=>{
+  const tid = detectTelegramId();
+  if(!tid){
+    const manual = prompt('Podaj telegram_id do testów:');
+    if(!manual) return;
+    telegram_id = manual;
+  } else {
+    telegram_id = tid;
+  }
+  // call /start to register (idempotent)
+  await fetch('/start',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({telegram_id}) });
+  await refresh(telegram_id);
+  qs('refresh').addEventListener('click', ()=>refresh(telegram_id));
 });
-
-
-}
-
-
-
-
-html+=`
-
-<button onclick="openHome()">
-
-⬅️ Back
-
-</button>
-
-
-</div>
-
-`;
-
-
-
-document.getElementById("content").innerHTML=html;
-
-
-}
-
-
-
-
-
-
-
-
-function downloadBook(file){
-
-
-window.open(
-
-API+
-"/download/"
-+
-userId+
-"/"+
-file.replace(".pdf","")
-
-);
-
-
-}
-
-
-
-
-
-
-
-
-// =========================
-// PROFILE
-// =========================
-
-
-async function openProfile(){
-
-
-let res=await fetch(
-
-API+
-"/user/"
-+
-userId
-
-);
-
-
-
-let u=await res.json();
-
-
-
-document.getElementById("content").innerHTML=`
-
-
-<div class="box">
-
-
-<h2>
-👤 Profile
-</h2>
-
-
-<p>
-Username:
-${u.username}
-</p>
-
-
-<p>
-🎟️ Tickets:
-${u.tickets}
-</p>
-
-
-<p>
-⭐ Level:
-${u.level}
-</p>
-
-
-
-<button onclick="openHome()">
-
-⬅️ Back
-
-</button>
-
-
-</div>
-
-
-`;
-
-
-
-}

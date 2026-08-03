@@ -1,89 +1,145 @@
-from flask import Flask, request, jsonify
-from database import get_db, init_db, calc_referral_bonus
+# UnderGroundZone - API
+# Main Flask application
+from flask import Flask, request, jsonify, send_from_directory, abort
+from database import Database
+from utils import load_ebooks, referral_bonus_for_thresholds
+from giveaway import GiveawayManager
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='webapp', static_url_path='/')
+DB_PATH = os.environ.get('DATABASE_URL', 'database.db')
+db = Database(DB_PATH)
 
-@app.before_first_request
-def setup():
-    init_db()
+essentials = load_ebooks('ebooks')
 
-@app.route("/start", methods=["POST"])
+giveaway = GiveawayManager(db)
+
+# Health
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
+
+# POST /start – rejestracja usera
+@app.route('/start', methods=['POST'])
 def start():
-    data = request.json
-    telegram_id = data.get("telegram_id")
-
+    data = request.get_json() or {}
+    telegram_id = data.get('telegram_id')
+    referrer_id = data.get('referrer_id')
     if not telegram_id:
-        return jsonify({"error": "telegram_id_required"}), 400
+        return jsonify({'error': 'telegram_id required'}), 400
 
-    conn = get_db()
-    c = conn.cursor()
+    user = db.get_user(telegram_id)
+    if user:
+        return jsonify({'ok': True, 'user': user})
 
-    c.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
-    user = c.fetchone()
+    # create user with 1 ticket
+    db.create_user(telegram_id)
 
-    if not user:
-        c.execute("INSERT INTO users (telegram_id, tickets, referrals) VALUES (?, ?, ?)", (telegram_id, 1, 0))
-        conn.commit()
+    # if referrer provided, count referral
+    if referrer_id:
+        db.add_referral(referrer_id, telegram_id)
 
-    return jsonify({"status": "ok"})
+    user = db.get_user(telegram_id)
+    return jsonify({'ok': True, 'user': user}), 201
 
-@app.route("/me", methods=["GET"])
+# GET /me – dane usera
+@app.route('/me', methods=['GET'])
 def me():
-    telegram_id = request.args.get("telegram_id")
-
+    telegram_id = request.args.get('telegram_id')
     if not telegram_id:
-        return jsonify({"error": "telegram_id_required"}), 400
-
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute("SELECT tickets, referrals FROM users WHERE telegram_id = ?", (telegram_id,))
-    user = c.fetchone()
-
+        return jsonify({'error': 'telegram_id required'}), 400
+    user = db.get_user(telegram_id)
     if not user:
-        return jsonify({"error": "not_found"}), 404
+        return jsonify({'error': 'user not found'}), 404
+    return jsonify({'user': user})
 
-    bonus = calc_referral_bonus(user["referrals"])
-
-    return jsonify({
-        "tickets": user["tickets"],
-        "referrals": user["referrals"],
-        "referral_bonus": bonus
-    })
-
-@app.route("/referral", methods=["POST"])
+# POST /referral – dodanie refa
+@app.route('/referral', methods=['POST'])
 def referral():
-    data = request.json
-    inviter_id = data.get("inviter_telegram_id")
+    data = request.get_json() or {}
+    referrer = data.get('referrer_id')
+    referee = data.get('referee_id')
+    if not referrer or not referee:
+        return jsonify({'error': 'referrer_id and referee_id required'}), 400
+    ok, msg = db.add_referral(referrer, referee)
+    if not ok:
+        return jsonify({'error': msg}), 400
+    return jsonify({'ok': True, 'message': msg})
 
-    if not inviter_id:
-        return jsonify({"error": "inviter_telegram_id_required"}), 400
-
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute("UPDATE users SET tickets = tickets + 1, referrals = referrals + 1 WHERE telegram_id = ?", (inviter_id,))
-    conn.commit()
-
-    return jsonify({"status": "ok"})
-
-@app.route("/ranking", methods=["GET"])
+# GET /ranking – top 10
+@app.route('/ranking', methods=['GET'])
 def ranking():
-    conn = get_db()
-    c = conn.cursor()
+    top = db.get_ranking(10)
+    return jsonify({'ranking': top})
 
-    c.execute("SELECT telegram_id, referrals FROM users ORDER BY referrals DESC LIMIT 10")
-    rows = [dict(r) for r in c.fetchall()]
+# GET /ebooks – lista ebooków
+@app.route('/ebooks', methods=['GET'])
+def ebooks_list():
+    ebooks = essentials
+    return jsonify({'ebooks': ebooks})
 
-    return jsonify(rows)
+# Serve ebook file via backend
+@app.route('/ebook/<path:filename>', methods=['GET'])
+def serve_ebook(filename):
+    ebook_dir = os.path.join(os.getcwd(), 'ebooks')
+    if not os.path.exists(os.path.join(ebook_dir, filename)):
+        abort(404)
+    return send_from_directory(ebook_dir, filename, as_attachment=True)
 
-@app.route("/ebooks", methods=["GET"])
-def ebooks():
-    return jsonify([
-        {"id": 1, "title": "Ebook 1", "price": 2, "tickets": 50},
-        {"id": 2, "title": "Ebook 2", "price": 5, "tickets": 150},
-        {"id": 3, "title": "Ebook 3", "price": 10, "tickets": 500},
-    ])
+# POST /buy-ebook – webhook crypto-bota
+@app.route('/buy-ebook', methods=['POST'])
+def buy_ebook():
+    data = request.get_json() or {}
+    telegram_id = data.get('telegram_id')
+    ebook_id = data.get('ebook_id')
+    amount = data.get('amount_usd')
+    if not telegram_id or ebook_id is None or amount is None:
+        return jsonify({'error': 'telegram_id, ebook_id and amount_usd required'}), 400
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    ebooks = essentials
+    ebook = next((e for e in ebooks if e['id'] == ebook_id), None)
+    if not ebook:
+        return jsonify({'error': 'ebook not found'}), 404
+
+    if float(amount) < float(ebook['price_usd']):
+        return jsonify({'error': 'amount too small'}), 400
+
+    # grant ebook and tickets
+    tickets_map = {2:50, 5:150, 10:500}
+    tickets_awarded = tickets_map.get(int(ebook['price_usd']), 0)
+    db.add_ebook_to_user(telegram_id, ebook_id, tickets_awarded)
+
+    # add to giveaway pool - 80%
+    cents = int(float(amount) * 100)
+    pool_add = int(cents * 0.8)
+    giveaway.add_to_pool(pool_add)
+
+    return jsonify({'ok': True, 'awarded_tickets': tickets_awarded})
+
+# Giveaways
+@app.route('/giveaway/start', methods=['POST'])
+def giveaway_start():
+    data = request.get_json() or {}
+    duration_minutes = data.get('duration_minutes')
+    giveaway.start(duration_minutes)
+    return jsonify({'ok': True, 'giveaway': giveaway.get_state()})
+
+@app.route('/giveaway/join', methods=['POST'])
+def giveaway_join():
+    data = request.get_json() or {}
+    telegram_id = data.get('telegram_id')
+    cost = int(data.get('cost', 1))
+    if not telegram_id:
+        return jsonify({'error': 'telegram_id required'}), 400
+    ok, msg = giveaway.join(telegram_id, cost)
+    if not ok:
+        return jsonify({'error': msg}), 400
+    return jsonify({'ok': True, 'message': msg})
+
+@app.route('/giveaway/end', methods=['POST'])
+def giveaway_end():
+    result = giveaway.end()
+    return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

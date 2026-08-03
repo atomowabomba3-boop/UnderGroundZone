@@ -1,30 +1,32 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <title>UnderGroundZone</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UnderGroundZone</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <div class="container">
+    <h1>UnderGroundZone</h1>
+    <div id="user-info">
+      <p>Telegram ID: <span id="telegram-id">-</span></p>
+      <p>Bilety: <span id="tickets">-</span></p>
+      <p>Refsy: <span id="refs">-</span></p>
+    </div>
 
-<h1>UnderGroundZone</h1>
+    <section>
+      <h2>Ebooki</h2>
+      <div id="ebooks"></div>
+    </section>
 
-<div id="info"></div>
+    <section>
+      <h2>Ranking</h2>
+      <ol id="ranking"></ol>
+    </section>
 
-<h2>Ebooki</h2>
-<div class="ebooks">
-    <a href="https://raw.githubusercontent.com/atomowabomba3-boop/UnderGroundZone/main/ebooks/ebook_1.pdf" target="_blank">
-        <img src="images/ebook_blue.png.jpg" width="120"><br>Ebook 1 ($2)
-    </a>
-
-    <a href="https://raw.githubusercontent.com/atomowabomba3-boop/UnderGroundZone/main/ebooks/ebook_2.pdf" target="_blank">
-        <img src="images/ebook_green.png.jpg" width="120"><br>Ebook 2 ($5)
-    </a>
-
-    <a href="https://raw.githubusercontent.com/atomowabomba3-boop/UnderGroundZone/main/ebooks/ebook_3.pdf" target="_blank">
-        <img src="images/ebook_purple.png.jpg" width="120"><br>Ebook 3 ($10)
-    </a>
-</div>
-
-<script src="app.js"></script>
+    <button id="refresh">Odśwież</button>
+  </div>
+  <script src="/app.js"></script>
 </body>
 </html>
