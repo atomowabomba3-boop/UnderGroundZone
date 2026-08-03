@@ -32,3 +32,16 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+def calc_referral_bonus(referrals):
+    if referrals >= 100:
+        return 300
+    elif referrals >= 50:
+        return 100
+    elif referrals >= 25:
+        return 40
+    elif referrals >= 10:
+        return 15
+    elif referrals >= 5:
+        return 5
+    return 0
