@@ -11,11 +11,13 @@ def setup():
 def start():
     data = request.json
     telegram_id = data.get("telegram_id")
+
     if not telegram_id:
         return jsonify({"error": "telegram_id_required"}), 400
 
     conn = get_db()
     c = conn.cursor()
+
     c.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
     user = c.fetchone()
 
@@ -28,11 +30,13 @@ def start():
 @app.route("/me", methods=["GET"])
 def me():
     telegram_id = request.args.get("telegram_id")
+
     if not telegram_id:
         return jsonify({"error": "telegram_id_required"}), 400
 
     conn = get_db()
     c = conn.cursor()
+
     c.execute("SELECT tickets, referrals FROM users WHERE telegram_id = ?", (telegram_id,))
     user = c.fetchone()
 
@@ -40,6 +44,7 @@ def me():
         return jsonify({"error": "not_found"}), 404
 
     bonus = calc_referral_bonus(user["referrals"])
+
     return jsonify({
         "tickets": user["tickets"],
         "referrals": user["referrals"],
@@ -50,11 +55,13 @@ def me():
 def referral():
     data = request.json
     inviter_id = data.get("inviter_telegram_id")
+
     if not inviter_id:
         return jsonify({"error": "inviter_telegram_id_required"}), 400
 
     conn = get_db()
     c = conn.cursor()
+
     c.execute("UPDATE users SET tickets = tickets + 1, referrals = referrals + 1 WHERE telegram_id = ?", (inviter_id,))
     conn.commit()
 
@@ -64,11 +71,12 @@ def referral():
 def ranking():
     conn = get_db()
     c = conn.cursor()
+
     c.execute("SELECT telegram_id, referrals FROM users ORDER BY referrals DESC LIMIT 10")
     rows = [dict(r) for r in c.fetchall()]
+
     return jsonify(rows)
 
-# przykładowy endpoint pod ebooki (na razie tylko lista)
 @app.route("/ebooks", methods=["GET"])
 def ebooks():
     return jsonify([
