@@ -1,6 +1,7 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
 
 class Database:
     def __init__(self, path='database.db'):
@@ -30,6 +31,15 @@ class Database:
             participants TEXT DEFAULT '[]',
             started_at TEXT,
             duration_minutes INTEGER
+        )
+        ''')
+
+        cur.execute('''
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            telegram_id TEXT,
+            created_at TEXT,
+            expires_at TEXT
         )
         ''')
 
@@ -119,6 +129,45 @@ class Database:
         self.conn.commit()
         return True
 
+    # session helpers
+    def create_session_token(self, telegram_id, days_valid=7):
+        token = secrets.token_urlsafe(32)
+        now = datetime.utcnow()
+        expires = now + timedelta(days=days_valid)
+        cur = self.conn.cursor()
+        cur.execute('INSERT INTO sessions (token, telegram_id, created_at, expires_at) VALUES (?,?,?,?)', (token, str(telegram_id), now.isoformat(), expires.isoformat()))
+        self.conn.commit()
+        return token
+
+    def get_telegram_by_token(self, token):
+        cur = self.conn.cursor()
+        cur.execute('SELECT telegram_id, expires_at FROM sessions WHERE token = ?', (token,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        # check expiry
+        try:
+            expires = datetime.fromisoformat(row['expires_at'])
+            if datetime.utcnow() > expires:
+                # expired, delete
+                cur.execute('DELETE FROM sessions WHERE token = ?', (token,))
+                self.conn.commit()
+                return None
+        except Exception:
+            pass
+        return row['telegram_id']
+
+    def get_all_users(self):
+        cur = self.conn.cursor()
+        cur.execute('SELECT telegram_id, tickets, referrals, ebooks_owned, referred_by, created_at FROM users ORDER BY referrals DESC')
+        rows = cur.fetchall()
+        results = []
+        for r in rows:
+            item = dict(r)
+            item['ebooks_owned'] = json.loads(item.get('ebooks_owned') or '[]')
+            results.append(item)
+        return results
+
 # sqlite helpers
 
 def sqlite_row(cursor, row):
@@ -126,3 +175,6 @@ def sqlite_row(cursor, row):
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
+
+# For referral bonus lookup without circular import
+from utils import referral_bonus_for_thresholds
