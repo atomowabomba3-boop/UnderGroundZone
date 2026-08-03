@@ -36,3 +36,6 @@ Dalsze kroki (opcjonalnie):
 - Dodać walidację HMAC dla webhooków od procesora płatności (bardziej bezpieczna niż prosty header)
 - Przenieść SQLite na Postgres w Railway dla trwałości
 - Dodać testy i migracje (Flask-Migrate / Alembic)
+
+
+*force rebuild triggered on Railway by Copilot*
