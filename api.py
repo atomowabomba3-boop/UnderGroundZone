@@ -299,5 +299,17 @@ def spa_fallback(path):
         return abort(404)
     return app.send_static_file('index.html')
 
+# Global 404 handler as a fallback for static-file 404s and other misses
+@app.errorhandler(404)
+def handle_404(e):
+    # If GET request and path doesn't look like API or a file, serve index.html (SPA)
+    try:
+        p = request.path.lstrip('/')
+        if request.method == 'GET' and not is_api_path(p) and '.' not in p:
+            return app.send_static_file('index.html'), 200
+    except Exception:
+        pass
+    return e
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
