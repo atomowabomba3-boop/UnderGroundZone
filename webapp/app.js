@@ -1,4 +1,4 @@
-# Frontend logic for UnderGroundZone (updated: modal, admin panel, emojis)
+// Frontend logic for UnderGroundZone (updated: modal, admin panel, emojis)
 const API = window.location.origin;
 
 function qs(id){return document.getElementById(id)}
@@ -17,8 +17,8 @@ async function loadEbooks(telegram_id, isAdmin=false){
       <h4>${e.title}</h4>
       <p>💲 ${e.price_usd} — 🎟️ ${priceToTickets(e.price_usd)} tickets</p>
       <div class="ebook-actions">
-        <button class="buy" data-id="${e.id}">✨ Kup</button>
-        ${isAdmin?'<button class="buy-free" data-id="'+e.id+'">🎁 Dodaj za darmo</button>':''}
+        <button class="buy" data-id="${e.id}">✨ Buy</button>
+        ${isAdmin?'<button class="buy-free" data-id="'+e.id+'">🎁 Grant free</button>':''}
       </div>
     `;
     container.appendChild(card);
@@ -86,7 +86,7 @@ async function loadRanking(){
 
 async function refresh(telegram_id){
   if(!telegram_id) return;
-  const res = await fetch(`/me?telegram_id=${telegram_id}`);
+  const res = await fetch(`/me?telegram_id=${encodeURIComponent(telegram_id)}`);
   if(res.status===200){
     const data = await res.json();
     qs('telegram-id').textContent = telegram_id;
@@ -124,32 +124,37 @@ async function loadAdminPanel(telegram_id){
   }));
 }
 
-// Telegram Mini App detection - try initDataUnsafe or query param
+// Telegram Web App detection - handle safely and avoid throwing when opened outside Telegram
 function detectTelegramId(){
   try{
-    if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe){
-      return window.Telegram.WebApp.initDataUnsafe.user.id;
+    if(window.Telegram && window.Telegram.WebApp){
+      try{
+        // when opened inside Telegram WebApp, initDataUnsafe should be available
+        const init = window.Telegram.WebApp.initDataUnsafe;
+        if(init && init.user && init.user.id) return String(init.user.id);
+        // sometimes only user object available via initData
+        if(window.Telegram.WebApp?.initData) return null;
+      }catch(e){
+        console.warn('Telegram WebApp exists but could not read initDataUnsafe', e);
+      }
     }
-  }catch(e){}
+  }catch(e){/* ignore */}
+  // fallback to URL param
   const url = new URL(window.location.href);
   return url.searchParams.get('telegram_id') || url.searchParams.get('id');
 }
 
 window.addEventListener('load', async ()=>{
-  const tid = detectTelegramId();
-  let telegram_id;
-  if(!tid){
-    const manual = prompt('Podaj telegram_id do testów:');
+  let telegram_id = detectTelegramId();
+  if(!telegram_id){
+    const manual = prompt('Enter your telegram_id for testing:');
     if(!manual) return;
     telegram_id = manual;
-  } else {
-    telegram_id = tid;
   }
-  // set admin id hidden field from server-side env (injected by template) - fallback empty
   // call /start to register (idempotent)
-  await fetch('/start',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({telegram_id}) });
-  // store admin id field if present
-  try{ const resp = await fetch('/_config'); if(resp.ok){ const cfg = await resp.json(); if(cfg.ADMIN_TELEGRAM_ID) qs('admin-id').value = String(cfg.ADMIN_TELEGRAM_ID); } }catch(e){}
+  try{ await fetch('/start',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({telegram_id}) }); }catch(e){console.warn('start failed', e)}
+  // store admin id field from server-side env (injected by template)
+  try{ const resp = await fetch('/_config'); if(resp.ok){ const cfg = await resp.json(); if(cfg.ADMIN_TELEGRAM_ID) qs('admin-id').value = String(cfg.ADMIN_TELEGRAM_ID); } }catch(e){console.warn('config fetch failed', e)}
   await refresh(telegram_id);
   qs('refresh').addEventListener('click', ()=>refresh(telegram_id));
   // modal close

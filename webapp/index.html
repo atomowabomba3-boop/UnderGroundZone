@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,12 +11,12 @@
     <h1>✨ UnderGroundZone</h1>
     <div id="user-info">
       <p>👤 Telegram ID: <span id="telegram-id">-</span></p>
-      <p>🎟️ Bilety: <span id="tickets">-</span></p>
-      <p>📣 Refsy: <span id="refs">-</span></p>
+      <p>🎟️ Tickets: <span id="tickets">-</span></p>
+      <p>📣 Referrals: <span id="refs">-</span></p>
     </div>
 
     <section>
-      <h2>📚 Ebooki</h2>
+      <h2>📚 Ebooks</h2>
       <div id="ebooks"></div>
     </section>
 
@@ -26,7 +26,7 @@
     </section>
 
     <div style="margin-top:12px">
-      <button id="refresh">Odśwież 🔄</button>
+      <button id="refresh">Refresh 🔄</button>
     </div>
 
     <!-- Admin hidden config -->
@@ -34,7 +34,7 @@
 
     <!-- Admin panel -->
     <div id="admin-panel" style="display:none; margin-top:20px; background:#071026; padding:12px; border-radius:8px;">
-      <h3>🔒 Panel Admina</h3>
+      <h3>🔒 Admin Panel</h3>
       <div id="admin-users"></div>
     </div>
   </div>
@@ -43,10 +43,10 @@
   <div id="modal" class="modal" style="display:none;">
     <div class="modal-content">
       <span id="modal-close" class="modal-close">✖</span>
-      <h3>🛒 Kup ebook</h3>
-      <p>Wybierz tryb płatności:</p>
-      <button id="modal-buy-sim">Zapłać (symulacja)</button>
-      <button id="modal-buy-real">Zapłać (płatność)</button>
+      <h3>🛒 Buy ebook</h3>
+      <p>Select payment mode:</p>
+      <button id="modal-buy-sim">Pay (simulation)</button>
+      <button id="modal-buy-real">Pay (real)</button>
     </div>
   </div>
 
