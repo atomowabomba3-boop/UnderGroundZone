@@ -158,7 +158,7 @@ async function loadAdminPanel(telegram_id){
   list.innerHTML='';
   j.users.forEach(u=>{
     const row = document.createElement('div'); row.className='admin-user';
-    row.innerHTML = `<strong>${u.telegram_id}</strong> — 🎟️ ${u.tickets} — 📚 ${u.ebooks_owned.length} — refs: ${u.referrals} <button data-id="${u.telegram_id}" class="grant">+10🎟️</button>`;
+    row.innerHTML = `<strong>${u.telegram_id}</strong> — 🎟️ ${u.tickets} — 📚 ${u.ebooks_owned.length} — refs: ${u.referrals} <button data-id="${u.telegram_id}" class="grant">+10🎟[...]
     list.appendChild(row);
   });
   document.querySelectorAll('.grant').forEach(btn=>btn.addEventListener('click', async (e)=>{
@@ -175,8 +175,12 @@ function detectTelegramId(){
   try{
     const W = window.Telegram?.WebApp;
     if(W){
+      console.log('✅ Telegram WebApp detected');
       const initUnsafe = W.initDataUnsafe;
-      if(initUnsafe && initUnsafe.user && initUnsafe.user.id) return String(initUnsafe.user.id);
+      if(initUnsafe && initUnsafe.user && initUnsafe.user.id) {
+        console.log('✅ Telegram ID found from initDataUnsafe:', initUnsafe.user.id);
+        return String(initUnsafe.user.id);
+      }
       const raw = W.initData;
       if(raw){
         try{
@@ -187,8 +191,12 @@ function detectTelegramId(){
           if(params.has('id')) return params.get('id');
         }catch(e){}
       }
+    } else {
+      console.warn('⚠️ Telegram WebApp not detected');
     }
-  }catch(e){}
+  }catch(e){
+    console.error('Error detecting Telegram:', e);
+  }
   const url = new URL(window.location.href);
   return url.searchParams.get('telegram_id') || null;
 }
@@ -209,15 +217,30 @@ function initLanguage(){
 }
 
 window.addEventListener('load', async ()=>{
+  console.log('🚀 Page loaded, initializing...');
+  
+  // Initialize Telegram WebApp
+  if(window.Telegram?.WebApp){
+    console.log('📱 Initializing Telegram WebApp...');
+    window.Telegram.WebApp.ready();
+    window.Telegram.WebApp.expand();
+  }
+  
   initLanguage();
   let telegram_id = detectTelegramId();
+  
+  console.log('🔍 Detected telegram_id:', telegram_id);
+  
   if(!telegram_id){
-    document.body.innerHTML = `<div style="padding:20px;font-family:sans-serif;">${t('header')}<br/><br/>Open this page from the Telegram bot (Web App) or add ?telegram_id=YOUR_ID to the URL for testing.</div>`;
+    console.error('❌ No telegram_id found');
+    document.body.innerHTML = `<div style="padding:20px;font-family:sans-serif;">${t('header')}<br/><br/>Open this page from the Telegram bot (Web App) or add ?telegram_id=YOUR_ID to the URL for testing. Debug: Check console for details.`;
     return;
   }
+  
   const initData = window.Telegram?.WebApp?.initData || null;
   try{ await fetch('/start',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({telegram_id, init_data: initData}) }); }catch(e){console.warn('start failed', e)}
-  try{ const resp = await fetch('/_config'); if(resp.ok){ const cfg = await resp.json(); if(cfg.ADMIN_TELEGRAM_ID) qs('admin-id').value = String(cfg.ADMIN_TELEGRAM_ID); } }catch(e){console.warn('config fetch failed', e)}
+  try{ const resp = await fetch('/_config'); if(resp.ok){ const cfg = await resp.json(); if(cfg.ADMIN_TELEGRAM_ID) qs('admin-id').value = String(cfg.ADMIN_TELEGRAM_ID); } }catch(e){console.warn('config failed', e)}
+  
   applyTranslations();
   await refresh(telegram_id);
   qs('refresh').addEventListener('click', ()=>refresh(telegram_id));
