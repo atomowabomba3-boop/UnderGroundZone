@@ -171,43 +171,40 @@ def update_user_tickets(user_id, tickets_change):
     conn.close()
 
 def add_referral(referrer_telegram_id, referred_telegram_id):
-    """Add referral and reward referrer"""
+    """Add referral and reward referrer (prevents duplicates and applies bonuses)"""
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     # Get user IDs
     cursor.execute('SELECT id FROM users WHERE telegram_id = ?', (referrer_telegram_id,))
     referrer = cursor.fetchone()
     cursor.execute('SELECT id FROM users WHERE telegram_id = ?', (referred_telegram_id,))
     referred = cursor.fetchone()
-    
+
     if not referrer or not referred:
         conn.close()
         return False
-    
+
     referrer_id = referrer['id']
     referred_id = referred['id']
-    
+
     try:
-        # Add referral
-        cursor.execute(
-            'INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)',
-            (referrer_id, referred_id)
-        )
-        
-        # Update referrals count
-        cursor.execute(
-            'SELECT referrals_count FROM users WHERE id = ?',
-            (referrer_id,)
-        )
-        ref_count = cursor.fetchone()['referrals_count'] + 1
-        
-        cursor.execute(
-            'UPDATE users SET referrals_count = ? WHERE id = ?',
-            (ref_count, referrer_id)
-        )
-        
-        # Apply progressive bonuses
+        # Prevent duplicate referrals
+        cursor.execute('SELECT 1 FROM referrals WHERE referrer_id = ? AND referred_id = ?', (referrer_id, referred_id))
+        if cursor.fetchone():
+            conn.close()
+            return False  # already referred
+
+        # Insert referral record
+        cursor.execute('INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)', (referrer_id, referred_id))
+
+        # Atomically increment referrals_count and give immediate +1 ticket reward
+        cursor.execute('UPDATE users SET referrals_count = referrals_count + 1, tickets = tickets + 1 WHERE id = ?', (referrer_id,))
+
+        # Read updated referrals_count to apply milestone bonuses
+        cursor.execute('SELECT referrals_count FROM users WHERE id = ?', (referrer_id,))
+        ref_count = cursor.fetchone()['referrals_count']
+
         bonus = 0
         if ref_count == 5:
             bonus = 5
@@ -219,13 +216,14 @@ def add_referral(referrer_telegram_id, referred_telegram_id):
             bonus = 100
         elif ref_count == 100:
             bonus = 300
-        
+
         if bonus > 0:
-            update_user_tickets(referrer_id, bonus)
-        
+            cursor.execute('UPDATE users SET tickets = tickets + ? WHERE id = ?', (bonus, referrer_id))
+
         conn.commit()
         return True
-    except sqlite3.IntegrityError:
+    except Exception:
+        conn.rollback()
         return False
     finally:
         conn.close()
