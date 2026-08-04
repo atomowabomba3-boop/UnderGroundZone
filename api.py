@@ -35,10 +35,10 @@ def get_frontend_base():
         return ''
 
 # Helper to build referral link; prefer bot deep-link when BOT_USERNAME provided
+# Hardcoded fallback as requested
 def build_referral_link(telegram_id):
-    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME')
+    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME') or 'UdrgroundBot'
     if bot_username:
-        # Use bot deep-link
         return f"https://t.me/{bot_username}?start={telegram_id}"
     frontend_base = get_frontend_base()
     if frontend_base:
@@ -418,7 +418,6 @@ def giveaway_history():
 
 # ==================== HEALTH CHECK ====================
 
-@app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
     return jsonify({'status':'ok'}), 200
