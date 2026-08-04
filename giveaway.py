@@ -1,89 +1,213 @@
+"""
+Giveaway module for UnderGroundZone
+Handles giveaway logic, pool management, and winner selection
+"""
+
+import random
 import json
-import os
-from datetime import datetime, timedelta
-import secrets
+from datetime import datetime
+from database import get_connection, get_user, update_user_tickets
 
-GHOST_THRESHOLD = 1500  # cents ($15)
-
-class GiveawayManager:
-    def __init__(self, db):
-        self.db = db
-
-    def _state(self):
-        cur = self.db.conn.cursor()
-        cur.execute('SELECT * FROM giveaway_state WHERE id = 1')
-        row = cur.fetchone()
-        if not row:
-            return None
-        state = dict(row)
-        state['participants'] = json.loads(state.get('participants') or '[]')
-        return state
-
-    def get_state(self):
-        s = self._state()
-        if not s:
-            return {'pool_cents': 0, 'is_active': False, 'participants': []}
-        return {'pool_cents': s['pool_cents'], 'is_active': bool(s['is_active']), 'participants': s['participants']}
-
-    def add_to_pool(self, cents):
-        cur = self.db.conn.cursor()
-        cur.execute('UPDATE giveaway_state SET pool_cents = pool_cents + ? WHERE id = 1', (int(cents),))
-        self.db.conn.commit()
-
-    def start(self, duration_minutes=None):
-        # enforce ghost threshold
-        state = self._state()
-        if not state:
+def start_giveaway():
+    """Start a new giveaway"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if there's already an active giveaway
+        cursor.execute('SELECT * FROM giveaway WHERE status = ?', ('active',))
+        if cursor.fetchone():
             return False
-        if state.get('pool_cents', 0) < GHOST_THRESHOLD:
-            return False
-        if duration_minutes is None:
-            duration_minutes = 60
-        cur = self.db.conn.cursor()
-        cur.execute('UPDATE giveaway_state SET is_active = 1, started_at = ?, duration_minutes = ? WHERE id = 1', (datetime.utcnow().isoformat(), duration_minutes))
-        self.db.conn.commit()
+        
+        # Create new giveaway
+        cursor.execute(
+            'INSERT INTO giveaway (pool_usd, status) VALUES (?, ?)',
+            (0, 'active')
+        )
+        conn.commit()
         return True
+    except Exception as e:
+        print(f"Error starting giveaway: {e}")
+        return False
+    finally:
+        conn.close()
 
-    def join(self, telegram_id, cost=1):
-        state = self._state()
-        if not state or state.get('is_active') != 1:
-            return False, 'giveaway not active'
-        # check user has enough tickets
-        user = self.db.get_user(telegram_id)
+def join_giveaway(telegram_id, tickets_spent):
+    """Join active giveaway with tickets"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        user = get_user(telegram_id)
         if not user:
-            return False, 'user not found'
-        if user['tickets'] < cost:
-            return False, 'not enough tickets'
-        # deduct tickets
-        ok = self.db.deduct_tickets(telegram_id, cost)
-        if not ok:
-            return False, 'failed to deduct tickets'
-        parts = state['participants']
-        if str(telegram_id) in [str(p) for p in parts]:
-            return False, 'already joined'
-        parts.append(str(telegram_id))
-        cur = self.db.conn.cursor()
-        cur.execute('UPDATE giveaway_state SET participants = ? WHERE id = 1', (json.dumps(parts),))
-        self.db.conn.commit()
-        return True, 'joined giveaway'
+            return {'success': False, 'error': 'User not found'}
+        
+        # Check if user has enough tickets
+        if user['tickets'] < tickets_spent:
+            return {'success': False, 'error': 'Not enough tickets'}
+        
+        # Get active giveaway
+        cursor.execute('SELECT * FROM giveaway WHERE status = ?', ('active',))
+        giveaway = cursor.fetchone()
+        
+        if not giveaway:
+            return {'success': False, 'error': 'No active giveaway'}
+        
+        # Check if giveaway pool reached ghost threshold ($15)
+        if giveaway['pool_usd'] < 15:
+            return {'success': False, 'error': 'Giveaway pool has not reached minimum threshold ($15)'}
+        
+        # Add participant
+        cursor.execute(
+            'INSERT INTO giveaway_participants (giveaway_id, user_id, tickets_spent) VALUES (?, ?, ?)',
+            (giveaway['id'], user['id'], tickets_spent)
+        )
+        
+        # Deduct tickets from user
+        new_tickets = user['tickets'] - tickets_spent
+        cursor.execute(
+            'UPDATE users SET tickets = ? WHERE id = ?',
+            (new_tickets, user['id'])
+        )
+        
+        conn.commit()
+        
+        return {
+            'success': True,
+            'message': f'Joined giveaway with {tickets_spent} tickets',
+            'remaining_tickets': new_tickets
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        return {'success': False, 'error': str(e)}
+    finally:
+        conn.close()
 
-    def end(self):
-        state = self._state()
-        if not state or state.get('is_active') != 1:
-            return {'error': 'no active giveaway'}
-        if not state['participants']:
-            # reset state
-            cur = self.db.conn.cursor()
-            cur.execute('UPDATE giveaway_state SET is_active = 0, participants = ?, pool_cents = 0 WHERE id = 1', (json.dumps([]),))
-            self.db.conn.commit()
-            return {'ok': True, 'message': 'no participants, pool cleared'}
-        # choose winner
-        winner = secrets.choice(state['participants'])
-        pool = state['pool_cents']
-        # reset participants' tickets to 1
-        self.db.reset_tickets_for_participants(state['participants'])
-        # reset pool and participants and deactivate
-        cur = self.db.conn.cursor()
-        cur.execute('UPDATE giveaway_state SET is_active = 0, participants = ?, pool_cents = 0 WHERE id = 1', (json.dumps([]),))
-        self.db.conn.commit()
-        return {'ok': True, 'winner': winner, 'pool_cents': pool}
+def end_giveaway():
+    """End giveaway and select winner"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Get active giveaway
+        cursor.execute('SELECT * FROM giveaway WHERE status = ?', ('active',))
+        giveaway = cursor.fetchone()
+        
+        if not giveaway:
+            return {'success': False, 'error': 'No active giveaway'}
+        
+        # Get all participants
+        cursor.execute(
+            'SELECT * FROM giveaway_participants WHERE giveaway_id = ?',
+            (giveaway['id'],)
+        )
+        participants = cursor.fetchall()
+        
+        if not participants:
+            return {'success': False, 'error': 'No participants in giveaway'}
+        
+        # Select winner (weighted by tickets spent)
+        participant_ids = []
+        for participant in participants:
+            # Add participant ID multiple times based on tickets spent
+            participant_ids.extend([participant['user_id']] * participant['tickets_spent'])
+        
+        winner_user_id = random.choice(participant_ids)
+        
+        # Update giveaway with winner and end it
+        cursor.execute(
+            'UPDATE giveaway SET status = ?, winner_id = ?, ended_at = ? WHERE id = ?',
+            ('ended', winner_user_id, datetime.now(), giveaway['id'])
+        )
+        
+        # Reset all participants' tickets to 1
+        cursor.execute(
+            'SELECT DISTINCT user_id FROM giveaway_participants WHERE giveaway_id = ?',
+            (giveaway['id'],)
+        )
+        participant_users = cursor.fetchall()
+        
+        for participant_user in participant_users:
+            cursor.execute(
+                'UPDATE users SET tickets = ? WHERE id = ?',
+                (1, participant_user['user_id'])
+            )
+        
+        # Give prize pool to winner (convert USD to tickets: $1 = 50 tickets)
+        prize_tickets = int(giveaway['pool_usd'] * 50)
+        cursor.execute(
+            'UPDATE users SET tickets = tickets + ? WHERE id = ?',
+            (prize_tickets, winner_user_id)
+        )
+        
+        conn.commit()
+        
+        # Get winner info
+        winner = get_user_by_id(winner_user_id)
+        
+        return {
+            'success': True,
+            'message': 'Giveaway ended',
+            'winner_telegram_id': winner['telegram_id'] if winner else 'Unknown',
+            'prize_usd': giveaway['pool_usd'],
+            'prize_tickets': prize_tickets
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        return {'success': False, 'error': str(e)}
+    finally:
+        conn.close()
+
+def get_user_by_id(user_id):
+    """Get user by database ID"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return dict(user) if user else None
+
+def get_giveaway_stats():
+    """Get giveaway statistics"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Get active giveaway
+    cursor.execute('SELECT * FROM giveaway WHERE status = ? ORDER BY id DESC LIMIT 1', ('active',))
+    active_giveaway = cursor.fetchone()
+    
+    # Get last ended giveaway
+    cursor.execute('SELECT * FROM giveaway WHERE status = ? ORDER BY ended_at DESC LIMIT 1', ('ended',))
+    last_ended = cursor.fetchone()
+    
+    conn.close()
+    
+    stats = {
+        'active': None,
+        'last_ended': None
+    }
+    
+    if active_giveaway:
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM giveaway_participants WHERE giveaway_id = ?',
+            (active_giveaway['id'],)
+        )
+        participants_count = cursor.fetchone()['count']
+        
+        stats['active'] = {
+            'pool_usd': active_giveaway['pool_usd'],
+            'participants': participants_count,
+            'ghost_threshold_reached': active_giveaway['pool_usd'] >= 15
+        }
+    
+    if last_ended:
+        winner = get_user_by_id(last_ended['winner_id'])
+        stats['last_ended'] = {
+            'pool_usd': last_ended['pool_usd'],
+            'winner_telegram_id': winner['telegram_id'] if winner else 'Unknown',
+            'ended_at': last_ended['ended_at']
+        }
+    
+    return stats
