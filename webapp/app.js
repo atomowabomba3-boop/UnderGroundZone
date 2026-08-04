@@ -140,9 +140,21 @@ function showTelegramMissingBanner(){
   });
 }
 
+async function sendDebugOpen(payload){
+  try{
+    await fetch('/debug-open', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    console.log('sent debug-open');
+  }catch(e){
+    console.warn('debug-open failed', e);
+  }
+}
+
 (async function init(){
   try{ if(isTelegramWebApp()){
-      const u = window.Telegram.WebApp.initDataUnsafe.user; if(u && u.id) telegram_id = String(u.id);
+      const initData = window.Telegram.WebApp.initDataUnsafe || {};
+      const u = initData.user; if(u && u.id) telegram_id = String(u.id);
+      // send debug payload to server so we can inspect what Telegram actually sent
+      sendDebugOpen({ initData });
     } else {
       showTelegramMissingBanner();
       const qtid = getQueryParam('telegram_id') || getQueryParam('ref') || null;
