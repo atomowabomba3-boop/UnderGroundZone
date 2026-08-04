@@ -2,3 +2,5 @@ flask
 gunicorn
 python-dotenv
 Flask-Cors
+SQLAlchemy
+psycopg2-binary

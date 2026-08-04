@@ -1,94 +1,89 @@
-import sqlite3
-import json
-from contextlib import closing
+# database.py
+# SQLAlchemy-based DB layer that works with SQLite (local) and PostgreSQL (Railway).
+from sqlalchemy import (
+    create_engine, Column, Integer, String, Text, Float, UniqueConstraint, CheckConstraint
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, scoped_session
+import os
 from pathlib import Path
 
-DB_PATH = Path("data.sqlite3")
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("DATABASE") or "sqlite:///data.sqlite3"
+
+# If using file-based sqlite, ensure directory exists
+if DATABASE_URL.startswith("sqlite:///"):
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
+engine = create_engine(DATABASE_URL, echo=False, future=True)
+SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, autocommit=False))
+Base = declarative_base()
+
+# Models (mirroring previous sqlite schema)
+class User(Base):
+    __tablename__ = "users"
+    telegram_id = Column(String, primary_key=True, index=True)
+    tickets = Column(Integer, nullable=False, default=0)
+    referrals = Column(Integer, nullable=False, default=0)
+    ebooks_owned = Column(Text, nullable=False, default="[]")  # keep JSON as text for compatibility
+    ref_bonus_level = Column(Integer, nullable=False, default=0)
 
 
-def get_conn():
-    DB_PATH.parent.mkdir(exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+class Referral(Base):
+    __tablename__ = "referrals"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    referrer_id = Column(String, nullable=False)
+    referred_id = Column(String, nullable=False)
+    __table_args__ = (UniqueConstraint("referrer_id", "referred_id", name="uq_ref_pair"),)
 
 
-def init_db(conn=None):
-    close_conn = False
-    if conn is None:
-        conn = get_conn()
-        close_conn = True
-    with closing(conn.cursor()) as cur:
-        # users: telegram_id primary key
-        cur.execute(
-            """
-        CREATE TABLE IF NOT EXISTS users (
-            telegram_id TEXT PRIMARY KEY,
-            tickets INTEGER NOT NULL DEFAULT 0,
-            referrals INTEGER NOT NULL DEFAULT 0,
-            ebooks_owned TEXT DEFAULT '[]',
-            ref_bonus_level INTEGER NOT NULL DEFAULT 0
-        )
-        """
-        )
-
-        cur.execute(
-            """
-        CREATE TABLE IF NOT EXISTS referrals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            referrer_id TEXT NOT NULL,
-            referred_id TEXT NOT NULL,
-            UNIQUE(referrer_id, referred_id)
-        )
-        """
-        )
-
-        cur.execute(
-            """
-        CREATE TABLE IF NOT EXISTS ebooks (
-            id TEXT PRIMARY KEY,
-            filename TEXT NOT NULL,
-            title TEXT NOT NULL,
-            price_usd REAL NOT NULL,
-            tickets_awarded INTEGER NOT NULL
-        )
-        """
-        )
-
-        cur.execute(
-            """
-        CREATE TABLE IF NOT EXISTS giveaway (
-            id INTEGER PRIMARY KEY CHECK (id=1),
-            active INTEGER NOT NULL DEFAULT 0,
-            pool_usd REAL NOT NULL DEFAULT 0,
-            entry_cost_tickets INTEGER NOT NULL DEFAULT 10
-        )
-        """
-        )
-        # create single row default for giveaway
-        cur.execute("INSERT OR IGNORE INTO giveaway (id, active, pool_usd, entry_cost_tickets) VALUES (1,0,0,10)")
-        cur.execute(
-            """
-        CREATE TABLE IF NOT EXISTS giveaway_participants (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_id TEXT NOT NULL,
-            entries INTEGER NOT NULL DEFAULT 1
-        )
-        """
-        )
-        conn.commit()
-    if close_conn:
-        conn.close()
+class Ebook(Base):
+    __tablename__ = "ebooks"
+    id = Column(String, primary_key=True)
+    filename = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    price_usd = Column(Float, nullable=False)
+    tickets_awarded = Column(Integer, nullable=False)
 
 
-def row_to_dict(row):
-    if row is None:
+class Giveaway(Base):
+    __tablename__ = "giveaway"
+    id = Column(Integer, primary_key=True)
+    active = Column(Integer, nullable=False, default=0)
+    pool_usd = Column(Float, nullable=False, default=0.0)
+    entry_cost_tickets = Column(Integer, nullable=False, default=10)
+    __table_args__ = (CheckConstraint("id = 1", name="ck_giveaway_single_row"),)
+
+
+class GiveawayParticipant(Base):
+    __tablename__ = "giveaway_participants"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    telegram_id = Column(String, nullable=False)
+    entries = Column(Integer, nullable=False, default=1)
+
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+    # ensure single giveaway row (id=1)
+    session = SessionLocal()
+    try:
+        g = session.query(Giveaway).get(1)
+        if not g:
+            g = Giveaway(id=1, active=0, pool_usd=0.0, entry_cost_tickets=10)
+            session.add(g)
+            session.commit()
+    finally:
+        session.close()
+
+
+def get_session():
+    return SessionLocal()
+
+# helper to convert ORM row to dict similar to previous row_to_dict
+def row_to_dict(obj):
+    if obj is None:
         return None
-    d = dict(row)
-    # convert JSON columns
-    if "ebooks_owned" in d and isinstance(d["ebooks_owned"], str):
-        try:
-            d["ebooks_owned"] = json.loads(d["ebooks_owned"])
-        except Exception:
-            d["ebooks_owned"] = []
-    return d
+    if hasattr(obj, "__dict__"):
+        d = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+        return d
+    return dict(obj)
