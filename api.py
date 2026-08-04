@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, make_response, abort, current_app
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
+import requests
 
 from database import (
     init_db, create_user, get_user, get_user_by_id, update_user_tickets,
@@ -15,12 +16,43 @@ from utils import (
 
 load_dotenv()
 
-app = Flask(__name__)
+# Serve the frontend from the `webapp/` directory
+base_dir = os.path.dirname(__file__)
+static_dir = os.path.join(base_dir, 'webapp')
+app = Flask(__name__, static_folder=static_dir, static_url_path='')
 CORS(app)
+
+# Serve index at root so Telegram Web App gets the front page
+@app.route('/')
+def index():
+    index_path = os.path.join(static_dir, 'index.html')
+    if os.path.isfile(index_path):
+        return send_from_directory(static_dir, 'index.html')
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+# Explicitly serve common static assets to avoid Flask static resolution issues
+@app.route('/app.js', methods=['GET'])
+def serve_app_js():
+    file_path = os.path.join(static_dir, 'app.js')
+    if os.path.isfile(file_path):
+        return send_from_directory(static_dir, 'app.js')
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+@app.route('/style.css', methods=['GET'])
+def serve_style_css():
+    file_path = os.path.join(static_dir, 'style.css')
+    if os.path.isfile(file_path):
+        return send_from_directory(static_dir, 'style.css')
+    return jsonify({'error': 'Endpoint not found'}), 404
 
 # Initialize database on startup
 with app.app_context():
-    init_db()
+    try:
+        init_db()
+    except Exception:
+        # If DB init fails, don't crash the whole app — log and continue so health checks work
+        import traceback
+        traceback.print_exc()
 
 # ==================== USER ENDPOINTS ====================
 
@@ -128,6 +160,42 @@ def get_ebooks():
         'status': 'success',
         'ebooks': formatted_ebooks
     }), 200
+
+
+@app.route('/download/<path:filename>', methods=['GET'])
+def download_ebook(filename):
+    """Serve ebook files.
+
+    Tries to serve from local /ebooks directory first. If not found,
+    proxies the file from GitHub raw (GITHUB_RAW_BASE) and returns it
+    with CORS header so it can be fetched from the Web App.
+    """
+    # Local ebooks directory
+    ebooks_dir = os.path.join(base_dir, 'ebooks')
+    local_path = os.path.join(ebooks_dir, filename)
+
+    # Security: prevent path traversal
+    if '..' in filename or filename.startswith('/'):
+        abort(400)
+
+    if os.path.isfile(local_path):
+        resp = make_response(send_from_directory(ebooks_dir, filename, as_attachment=True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+
+    # Proxy from GitHub raw
+    raw_base = current_app.config.get('GITHUB_RAW_BASE', 'https://raw.githubusercontent.com/atomowabomba3-boop/UnderGroundZone/main/ebooks')
+    raw_url = f"{raw_base}/{filename}"
+    r = requests.get(raw_url, stream=True)
+    if r.status_code != 200:
+        abort(404)
+
+    resp = make_response(r.content)
+    resp.headers['Content-Type'] = r.headers.get('Content-Type', 'application/pdf')
+    resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
 
 @app.route('/buy-ebook', methods=['POST'])
 @require_crypto_webhook
@@ -258,7 +326,7 @@ def giveaway_history():
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
-    return jsonify({'status': 'ok'}), 200
+    return jsonify({'status':'ok'}), 200
 
 # ==================== ERROR HANDLERS ====================
 
