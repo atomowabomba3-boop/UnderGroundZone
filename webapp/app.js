@@ -1,225 +1,117 @@
-// Frontend logic with i18n and auto-detect Telegram ID
-const API = window.location.origin;
+// Simple frontend client for UnderGroundZone with referral and webhook simulation
+const API = "/";
+function $q(sel){ return document.querySelector(sel); }
 
-const TRANSLATIONS = {
-  en: {
-    title: 'UnderGroundZone',
-    header: '✨ UnderGroundZone',
-    user: '👤 Telegram ID:',
-    tickets: '🎟️ Tickets:',
-    refs: '📣 Referrals:',
-    ebooks: '📚 Ebooks',
-    ranking: '🏆 Ranking',
-    adminPanel: '🔒 Admin Panel',
-    buy: '✨ Buy',
-    grantFree: '🎁 Grant free',
-    refresh: 'Refresh 🔄',
-    buyModalTitle: '🛒 Buy ebook',
-    buyModalPrompt: 'Select payment mode:',
-    paySim: 'Pay (simulation)',
-    payReal: 'Pay (real)'
-  },
-  pl: {
-    title: 'UnderGroundZone',
-    header: '✨ UnderGroundZone',
-    user: '👤 Telegram ID:',
-    tickets: '🎟️ Bilety:',
-    refs: '📣 Polecenia:',
-    ebooks: '📚 Ebooki',
-    ranking: '🏆 Ranking',
-    adminPanel: '🔒 Panel Admina',
-    buy: '✨ Kup',
-    grantFree: '🎁 Przyznaj za darmo',
-    refresh: 'Odśwież 🔄',
-    buyModalTitle: '🛒 Kup ebook',
-    buyModalPrompt: 'Wybierz sposób płatności:',
-    paySim: 'Płatność (symulacja)',
-    payReal: 'Płatność (na żywo)'
+let telegram_id = null;
+
+function getQueryParam(name) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+async function api(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+  if(opts.body && typeof opts.body !== "string") opts.body = JSON.stringify(opts.body);
+  const res = await fetch(API + path, opts);
+  return res.json();
+}
+
+async function loadUser() {
+  const tid = telegram_id || getQueryParam("telegram_id");
+  if(!tid){
+    document.getElementById("user-info").textContent = "Brak telegram_id. Otwórz przez Telegram Mini App lub dodaj ?telegram_id=...";
+    return;
   }
-};
-
-function qs(id){return document.getElementById(id)}
-function el(tag, cls){ const e = document.createElement(tag); if(cls) e.className = cls; return e }
-
-function t(key){
-  const lang = localStorage.getItem('ugz_lang') || 'en';
-  return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS['en'][key] || key;
+  telegram_id = tid;
+  document.getElementById("ref-link").value = `${location.origin}${location.pathname}?ref=${telegram_id}`;
+  await api("start", {method:"POST", body:{telegram_id}});
+  const me = await api(`me?telegram_id=${telegram_id}`);
+  if(me.error){
+    document.getElementById("user-info").textContent = "Błąd ładowania użytkownika";
+    return;
+  }
+  const user = me.user;
+  document.getElementById("user-info").textContent = `Zalogowany: ${telegram_id}`;
+  document.getElementById("tickets").textContent = user.tickets;
+  document.getElementById("refs").textContent = user.referrals;
+  const owned = user.ebooks_owned || [];
+  const ownedList = document.getElementById("ebooks-owned");
+  ownedList.innerHTML = "";
+  owned.forEach(e => { const li = document.createElement("li"); li.textContent = e; ownedList.appendChild(li); });
 }
 
-function applyTranslations(){
-  qs('site-title').textContent = t('title');
-  qs('header-title').textContent = t('header');
-  qs('label-user').textContent = t('user');
-  qs('label-tickets').textContent = t('tickets');
-  qs('label-refs').textContent = t('refs');
-  qs('label-ebooks').textContent = t('ebooks');
-  qs('label-ranking').textContent = t('ranking');
-  qs('admin-title').textContent = t('adminPanel');
-  qs('modal-title').textContent = t('buyModalTitle');
-  qs('modal-prompt').textContent = t('buyModalPrompt');
-  qs('modal-buy-sim').textContent = t('paySim');
-  qs('modal-buy-real').textContent = t('payReal');
-  qs('refresh').textContent = t('refresh');
-}
-
-async function loadEbooks(telegram_id, isAdmin=false){
-  const res = await fetch('/ebooks');
-  const data = await res.json();
-  const container = qs('ebooks');
-  container.innerHTML='';
-  data.ebooks.forEach(e=>{
-    const card = el('div','ebook');
-    card.innerHTML = `
-      <img src="${e.image || '/images/sample1.jpg'}" alt="${e.title}"/>
-      <h4>${e.title}</h4>
-      <p>💲 ${e.price_usd} — 🎟️ ${priceToTickets(e.price_usd)} tickets</p>
-      <div class="ebook-actions">
-        <button class="buy" data-id="${e.id}">${t('buy')}</button>
-        ${isAdmin?`<button class="buy-free" data-id="${e.id}">${t('grantFree')}</button>`:''}
-      </div>
-    `;
-    container.appendChild(card);
-  });
-  // listeners
-  document.querySelectorAll('.buy').forEach(b=>b.addEventListener('click', async (evt)=>{
-    const id = evt.currentTarget.dataset.id;
-    openBuyModal(id, telegram_id);
-  }));
-  document.querySelectorAll('.buy-free').forEach(b=>b.addEventListener('click', async (evt)=>{
-    const id = evt.currentTarget.dataset.id;
-    const r = await fetch('/admin/award-free', {method:'POST', headers:{'Content-Type':'application/json','X-ADMIN-ID':telegram_id}, body: JSON.stringify({telegram_id, ebook_id: id})});
-    const j = await r.json();
-    alert(JSON.stringify(j));
-    refresh(telegram_id);
-  }));
-}
-
-function priceToTickets(price){
-  if(price==2) return 50;
-  if(price==5) return 150;
-  if(price==10) return 500;
-  return Math.round(price*25);
-}
-
-function openBuyModal(ebook_id, telegram_id){
-  const modal = qs('modal');
-  modal.style.display='block';
-  modal.dataset.eid = ebook_id;
-  qs('modal-buy-sim').onclick = async ()=>{
-    modal.style.display='none';
-    const body = { telegram_id, ebook_id: parseInt(ebook_id), mode: 'simulate' };
-    const r = await fetch('/checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-    const j = await r.json();
-    alert(JSON.stringify(j));
-    refresh(telegram_id);
-  };
-  qs('modal-buy-real').onclick = async ()=>{
-    modal.style.display='none';
-    const body = { telegram_id, ebook_id: parseInt(ebook_id), mode: 'real' };
-    const r = await fetch('/checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-    const j = await r.json();
-    if(j.order_token && j.payment_link){ window.open(j.payment_link, '_blank'); }
-    alert(JSON.stringify(j));
-    refresh(telegram_id);
-  };
+async function loadEbooks(){
+  const res = await api("ebooks");
+  const container = document.getElementById("ebooks-list");
+  container.innerHTML = "";
+  if(res.ok){
+    res.ebooks.forEach(ebook=>{
+      const d = document.createElement("div"); d.className="ebook";
+      d.innerHTML = `
+        <img src="/images/placeholder.png" alt="cover" />
+        <h3>${ebook.title}</h3>
+        <div>Price: $${ebook.price_usd} → ${ebook.tickets_awarded} tickets</div>
+        <button data-id="${ebook.id}" data-price="${ebook.price_usd}">Buy (simulate)</button>
+        <a href="/ebooks/${ebook.filename}" target="_blank">Pobierz (backend)</a>
+      `;
+      const btn = d.querySelector("button");
+      btn.addEventListener("click", ()=> {
+        const secret = prompt("Wpisz webhook secret do symulacji (leave blank to cancel)");
+        if(!secret) return;
+        const body = { telegram_id: telegram_id || prompt('telegram_id?'), ebook_id: ebook.id, amount_usd: ebook.price_usd };
+        fetch('/buy-ebook', { method: 'POST', headers: { 'Content-Type':'application/json', 'X-WEBHOOK-SECRET': secret }, body: JSON.stringify(body) })
+          .then(r=>r.json()).then(j=>{ alert(JSON.stringify(j)); loadUser(); });
+      });
+      container.appendChild(d);
+    });
+  }
 }
 
 async function loadRanking(){
-  const res = await fetch('/ranking');
-  const data = await res.json();
-  const ol = qs('ranking');
-  ol.innerHTML='';
-  data.ranking.forEach(u=>{
-    const li = document.createElement('li');
-    li.textContent = `${u.telegram_id} — refs: ${u.referrals} — tickets: ${u.tickets}`;
-    ol.appendChild(li);
-  })
-}
-
-async function refresh(telegram_id){
-  if(!telegram_id) return;
-  const res = await fetch(`/me?telegram_id=${encodeURIComponent(telegram_id)}`);
-  if(res.status===200){
-    const data = await res.json();
-    qs('telegram-id').textContent = telegram_id;
-    qs('tickets').textContent = data.user.tickets;
-    qs('refs').textContent = data.user.referrals;
-    const isAdmin = !!data.user.is_admin;
-    await loadEbooks(telegram_id, isAdmin);
-    await loadRanking();
-    if(isAdmin){ qs('admin-panel').style.display='block'; loadAdminPanel(telegram_id); } else { qs('admin-panel').style.display='none'; }
+  const res = await api("ranking");
+  const ol = document.getElementById("ranking-list");
+  ol.innerHTML = "";
+  if(res.ok){
+    res.ranking.forEach(r=>{
+      const li = document.createElement("li");
+      li.textContent = `${r.telegram_id} — ${r.referrals} refów`;
+      ol.appendChild(li);
+    });
   }
 }
 
-async function loadAdminPanel(telegram_id){
-  const r = await fetch('/admin/users', { headers: { 'X-ADMIN-ID': telegram_id } });
-  const j = await r.json();
-  const list = qs('admin-users');
-  list.innerHTML='';
-  j.users.forEach(u=>{
-    const row = document.createElement('div'); row.className='admin-user';
-    row.innerHTML = `<strong>${u.telegram_id}</strong> — 🎟️ ${u.tickets} — 📚 ${u.ebooks_owned.length} — refs: ${u.referrals} <button data-id="${u.telegram_id}" class="grant">+10🎟️</button>`;
-    list.appendChild(row);
-  });
-  document.querySelectorAll('.grant').forEach(btn=>btn.addEventListener('click', async (e)=>{
-    const tid = e.currentTarget.dataset.id;
-    const rr = await fetch('/admin/grant-tickets', { method:'POST', headers:{'Content-Type':'application/json','X-ADMIN-ID':telegram_id}, body: JSON.stringify({telegram_id: tid, amount: 10}) });
-    alert(JSON.stringify(await rr.json()));
-    loadAdminPanel(telegram_id);
-    refresh(telegram_id);
-  }));
-}
+document.getElementById("refresh-ranking").addEventListener("click", loadRanking);
 
-// Detect Telegram ID automatically
-function detectTelegramId(){
-  try{
-    const W = window.Telegram?.WebApp;
-    if(W){
-      const initUnsafe = W.initDataUnsafe;
-      if(initUnsafe && initUnsafe.user && initUnsafe.user.id) return String(initUnsafe.user.id);
-      const raw = W.initData;
-      if(raw){
-        try{
-          const params = new URLSearchParams(raw);
-          if(params.has('user')){
-            try{ const u = JSON.parse(params.get('user')); if(u && u.id) return String(u.id); }catch(e){}
-          }
-          if(params.has('id')) return params.get('id');
-        }catch(e){}
-      }
-    }
-  }catch(e){}
-  const url = new URL(window.location.href);
-  return url.searchParams.get('telegram_id') || null;
-}
-
-// Language selector
-function initLanguage(){
-  const sel = qs('lang-select');
-  const saved = localStorage.getItem('ugz_lang') || 'en';
-  sel.value = saved;
-  applyTranslations();
-  sel.addEventListener('change', ()=>{
-    localStorage.setItem('ugz_lang', sel.value);
-    applyTranslations();
-    // re-render ebooks (they use t() when rendering)
-    const telegram_id = qs('telegram-id').textContent || null;
-    if(telegram_id && telegram_id !== '-') refresh(telegram_id);
-  });
-}
-
-window.addEventListener('load', async ()=>{
-  initLanguage();
-  let telegram_id = detectTelegramId();
-  if(!telegram_id){
-    document.body.innerHTML = `<div style="padding:20px;font-family:sans-serif;">${t('header')}<br/><br/>Open this page from the Telegram bot (Web App) or add ?telegram_id=YOUR_ID to the URL for testing.</div>`;
-    return;
-  }
-  const initData = window.Telegram?.WebApp?.initData || null;
-  try{ await fetch('/start',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({telegram_id, init_data: initData}) }); }catch(e){console.warn('start failed', e)}
-  try{ const resp = await fetch('/_config'); if(resp.ok){ const cfg = await resp.json(); if(cfg.ADMIN_TELEGRAM_ID) qs('admin-id').value = String(cfg.ADMIN_TELEGRAM_ID); } }catch(e){console.warn('config fetch failed', e)}
-  applyTranslations();
-  await refresh(telegram_id);
-  qs('refresh').addEventListener('click', ()=>refresh(telegram_id));
-  qs('modal-close').addEventListener('click', ()=>{ qs('modal').style.display='none'; });
+// referral send
+document.getElementById("send-ref").addEventListener("click", async ()=>{
+  const referrer = document.getElementById("referrer").value;
+  const referred = document.getElementById("referred").value;
+  if(!referrer || !referred){ alert('wypełnij pola'); return; }
+  const res = await api('referral', { method:'POST', body:{ referrer_id: referrer, referred_id: referred } });
+  alert(JSON.stringify(res));
+  loadUser();
 });
+
+// simulation form
+document.getElementById("send-sim").addEventListener("click", async ()=>{
+  const secret = document.getElementById("webhook-secret").value;
+  const tid = document.getElementById("sim-telegram-id").value;
+  const ebook_id = document.getElementById("sim-ebook-id").value;
+  const amount = document.getElementById("sim-amount").value;
+  if(!tid || !ebook_id || !amount){ alert('Wypełnij wszystkie pola symulacji'); return; }
+  const body = { telegram_id: tid, ebook_id: ebook_id, amount_usd: parseFloat(amount) };
+  const headers = { 'Content-Type':'application/json' };
+  if(secret) headers['X-WEBHOOK-SECRET'] = secret;
+  const res = await fetch('/buy-ebook', { method:'POST', headers, body: JSON.stringify(body) });
+  const j = await res.json();
+  alert(JSON.stringify(j));
+  loadUser();
+});
+
+(async function init(){
+  try{ if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe){ const u = window.Telegram.WebApp.initDataUnsafe.user; if(u && u.id) telegram_id = String(u.id); } }catch(e){}
+  await loadUser();
+  await loadEbooks();
+  await loadRanking();
+})();

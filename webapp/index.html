@@ -1,63 +1,59 @@
 <!doctype html>
-<html lang="en">
+<html lang="pl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title id="site-title">UnderGroundZone</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UnderGroundZone — Telegram Mini App</title>
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div class="container">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <h1 id="header-title">✨ UnderGroundZone</h1>
-      <div>
-        <label for="lang-select" style="margin-right:6px">Language</label>
-        <select id="lang-select" aria-label="Language selector">
-          <option value="en">English</option>
-          <option value="pl">Polski</option>
-        </select>
-      </div>
-    </div>
+    <header>
+      <h1>UnderGroundZone</h1>
+      <p id="user-info">Ładowanie...</p>
+    </header>
 
-    <div id="user-info">
-      <p><span id="label-user">👤 Telegram ID:</span> <span id="telegram-id">-</span></p>
-      <p><span id="label-tickets">🎟️ Tickets:</span> <span id="tickets">-</span></p>
-      <p><span id="label-refs">📣 Referrals:</span> <span id="refs">-</span></p>
-    </div>
-
-    <section>
-      <h2 id="label-ebooks">📚 Ebooks</h2>
-      <div id="ebooks"></div>
+    <section class="stats">
+      <div>Bilety: <span id="tickets">—</span></div>
+      <div>Refy: <span id="refs">—</span></div>
+      <div>Posiadane eBooki: <ul id="ebooks-owned"></ul></div>
+      <div>Ranking: <button id="refresh-ranking">Odśwież</button></div>
+      <ol id="ranking-list"></ol>
     </section>
 
-    <section>
-      <h2 id="label-ranking">🏆 Ranking</h2>
-      <ol id="ranking"></ol>
+    <section class="ebooks">
+      <h2>Ebooki</h2>
+      <div id="ebooks-list"></div>
     </section>
 
-    <div style="margin-top:12px">
-      <button id="refresh">Refresh 🔄</button>
-    </div>
+    <section class="referral">
+      <h2>Referral</h2>
+      <p>Twój referral link (skopiuj): <input id="ref-link" readonly /></p>
+      <p>Wyślij ref ręcznie (dla testów):</p>
+      <input id="referrer" placeholder="Twój telegram_id" />
+      <input id="referred" placeholder="Telegram_id poleconego" />
+      <button id="send-ref">Wyślij referral</button>
+      <p>Bonusy:</p>
+      <ul>
+        <li>5 refów → +5 biletów</li>
+        <li>10 refów → +15 biletów</li>
+        <li>25 refów → +40 biletów</li>
+        <li>50 refów → +100 biletów</li>
+        <li>100 refów → +300 biletów</li>
+      </ul>
+    </section>
 
-    <!-- Admin hidden config -->
-    <input type="hidden" id="admin-id" value="">
+    <section class="simulate">
+      <h2>Symulacja zakupu (test webhook)</h2>
+      <p>Webhook secret (wpisz CRYPTO_WEBHOOK_SECRET aby zasymulować podpis):</p>
+      <input id="webhook-secret" placeholder="secret" />
+      <p>Wybierz ebook id i wpisz telegram_id aby zasymulować płatność:</p>
+      <input id="sim-telegram-id" placeholder="telegram_id" />
+      <input id="sim-ebook-id" placeholder="ebook_id (np. ebook-1)" />
+      <input id="sim-amount" placeholder="amount_usd (np. 2.0)" />
+      <button id="send-sim">Wyślij testowy webhook</button>
+    </section>
 
-    <!-- Admin panel -->
-    <div id="admin-panel" style="display:none; margin-top:20px; background:#071026; padding:12px; border-radius:8px;">
-      <h3 id="admin-title">🔒 Admin Panel</h3>
-      <div id="admin-users"></div>
-    </div>
-  </div>
-
-  <!-- Buy Modal -->
-  <div id="modal" class="modal" style="display:none;">
-    <div class="modal-content">
-      <span id="modal-close" class="modal-close">✖</span>
-      <h3 id="modal-title">🛒 Buy ebook</h3>
-      <p id="modal-prompt">Select payment mode:</p>
-      <button id="modal-buy-sim">Pay (simulation)</button>
-      <button id="modal-buy-real">Pay (real)</button>
-    </div>
   </div>
 
   <script src="/app.js"></script>
