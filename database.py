@@ -2,11 +2,21 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = os.getenv('DB_PATH', 'underground_zone.db')
+# Use a writable default path inside the container (Railway) to avoid permission errors
+DB_PATH = os.getenv('DB_PATH', '/tmp/underground_zone.db')
+
+# Ensure directory exists for DB_PATH (handles cases where a custom path is provided)
+_db_dir = os.path.dirname(DB_PATH)
+if _db_dir and not os.path.exists(_db_dir):
+    try:
+        os.makedirs(_db_dir, exist_ok=True)
+    except Exception:
+        # Best-effort: if we cannot create the dir, we'll rely on SQLite to raise an informative error
+        pass
 
 def init_db():
     """Initialize database with all required tables"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
     
     # Users table
@@ -91,7 +101,7 @@ def init_db():
 
 def get_db_connection():
     """Get database connection with row factory"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -107,7 +117,8 @@ def create_user(telegram_id):
         )
         conn.commit()
         user_id = cursor.lastrowid
-        return {'id': user_id, 'telegram_id': telegram_id, 'tickets': 1, 'referrals_count': 0, 'ebooks_owned': []}
+        # Return a user dict consistent with format_user_response expectations
+        return {'id': user_id, 'telegram_id': telegram_id, 'tickets': 1, 'referrals_count': 0, 'ebooks_owned': '[]'}
     except sqlite3.IntegrityError:
         return None
     finally:
