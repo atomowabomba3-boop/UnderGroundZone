@@ -19,6 +19,7 @@ const ADMIN_TELEGRAM_ID = 8998575936;
 // ==================== TELEGRAM INTEGRATION ====================
 let telegramUserId = null;
 let currentUser = null;
+let referralParam = null; // will hold the referral start param
 
 function initTelegramWebApp() {
     const tg = window.Telegram?.WebApp;
@@ -32,10 +33,32 @@ function initTelegramWebApp() {
             telegramUserId = tg.initDataUnsafe.user.id;
             console.log('Telegram User ID:', telegramUserId);
         }
+
+        // Read start_param from Telegram deep link (if provided)
+        // Telegram WebApp can provide initDataUnsafe.start_param
+        const startParam = tg.initDataUnsafe?.start_param || tg.initData?.start_param;
+        if (startParam) {
+            const asInt = parseInt(startParam);
+            referralParam = isNaN(asInt) ? startParam : asInt;
+            console.log('Telegram start param (referral) detected:', referralParam);
+        }
     } else {
         // For development/testing
         telegramUserId = 123456789;
         console.warn('Telegram WebApp not available, using test ID');
+
+        // fallback: parse ?ref= from URL for direct testing
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const ref = params.get('ref');
+            if (ref) {
+                const asInt = parseInt(ref);
+                referralParam = isNaN(asInt) ? ref : asInt;
+                console.log('Referral param from URL:', referralParam);
+            }
+        } catch (e) {
+            console.warn('Failed to parse URL ref param', e);
+        }
     }
     
     // Show admin tab only for admin
@@ -77,11 +100,19 @@ async function apiCall(endpoint, method = 'GET', data = null) {
 
 async function startUser() {
     try {
-        const data = await apiCall(API_ENDPOINTS.START, 'POST', {
-            telegram_id: telegramUserId
-        });
+        const payload = { telegram_id: telegramUserId };
+        if (referralParam) payload.referrer_telegram_id = referralParam;
+
+        const data = await apiCall(API_ENDPOINTS.START, 'POST', payload);
         currentUser = data.user;
         updateUserDisplay();
+
+        // set referral link UI from API response
+        if (currentUser && currentUser.referral_link) {
+            const linkInput = document.getElementById('referral-link');
+            if (linkInput) linkInput.value = currentUser.referral_link;
+        }
+
         return data.user;
     } catch (error) {
         showToast('Failed to start app', 'error');
