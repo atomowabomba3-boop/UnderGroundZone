@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UnderGroundZone - Telegram Mini App</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">⚡ UnderGroundZone</h1>
+                <div class="user-info">
+                    <span id="user-tickets" class="tickets-badge">🎫 Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="home">
+                <span class="icon">🏠</span> Home
+            </button>
+            <button class="nav-tab" data-tab="ebooks">
+                <span class="icon">📚</span> eBooks
+            </button>
+            <button class="nav-tab" data-tab="referral">
+                <span class="icon">👥</span> Referral
+            </button>
+            <button class="nav-tab" data-tab="giveaway">
+                <span class="icon">🎁</span> Giveaway
+            </button>
+            <button class="nav-tab" data-tab="ranking">
+                <span class="icon">🏆</span> Ranking
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+            <!-- Home Tab -->
+            <section id="home-tab" class="tab-content active">
+                <div class="home-hero">
+                    <div class="hero-icon">⚡</div>
+                    <h2>Welcome to UnderGroundZone!</h2>
+                    <p>Earn tickets, refer friends, and win prizes!</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🎫</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="home-tickets">0</div>
+                            <div class="stat-label">Your Tickets</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="home-referrals">0</div>
+                            <div class="stat-label">Referrals</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">📚</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="home-ebooks">0</div>
+                            <div class="stat-label">eBooks Owned</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bonus-section">
+                    <h3>📈 Referral Bonuses</h3>
+                    <div class="bonus-list">
+                        <div class="bonus-item">
+                            <span class="bonus-milestone">5 Referrals</span>
+                            <span class="bonus-reward">+5 Tickets</span>
+                        </div>
+                        <div class="bonus-item">
+                            <span class="bonus-milestone">10 Referrals</span>
+                            <span class="bonus-reward">+15 Tickets</span>
+                        </div>
+                        <div class="bonus-item">
+                            <span class="bonus-milestone">25 Referrals</span>
+                            <span class="bonus-reward">+40 Tickets</span>
+                        </div>
+                        <div class="bonus-item">
+                            <span class="bonus-milestone">50 Referrals</span>
+                            <span class="bonus-reward">+100 Tickets</span>
+                        </div>
+                        <div class="bonus-item">
+                            <span class="bonus-milestone">100 Referrals</span>
+                            <span class="bonus-reward">+300 Tickets</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- eBooks Tab -->
+            <section id="ebooks-tab" class="tab-content">
+                <h2>📚 Available eBooks</h2>
+                <div id="ebooks-list" class="ebooks-grid">
+                    <div class="loading">Loading eBooks...</div>
+                </div>
+            </section>
+
+            <!-- Referral Tab -->
+            <section id="referral-tab" class="tab-content">
+                <h2>👥 Invite Friends</h2>
+                <div class="referral-section">
+                    <div class="referral-info">
+                        <p>Share your unique link with friends. Each person who joins earns you <strong>+1 Ticket</strong>!</p>
+                    </div>
+
+                    <div class="referral-link-box">
+                        <input 
+                            type="text" 
+                            id="referral-link" 
+                            class="referral-input" 
+                            readonly 
+                            value="https://t.me/underground_zone_bot/app"
+                        >
+                        <button id="copy-referral-btn" class="btn btn-primary">
+                            📋 Copy Link
+                        </button>
+                    </div>
+
+                    <div class="referral-stats">
+                        <div class="referral-stat">
+                            <div class="stat-number" id="referral-count">0</div>
+                            <div class="stat-text">People Invited</div>
+                        </div>
+                        <div class="referral-stat">
+                            <div class="stat-number" id="referral-bonus">0</div>
+                            <div class="stat-text">Bonus Tickets</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Giveaway Tab -->
+            <section id="giveaway-tab" class="tab-content">
+                <h2>🎁 Giveaway</h2>
+                <div id="giveaway-content" class="giveaway-section">
+                    <div class="loading">Loading giveaway status...</div>
+                </div>
+            </section>
+
+            <!-- Ranking Tab -->
+            <section id="ranking-tab" class="tab-content">
+                <h2>🏆 Top Users</h2>
+                <div id="ranking-list" class="ranking-grid">
+                    <div class="loading">Loading ranking...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
