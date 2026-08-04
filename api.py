@@ -58,10 +58,14 @@ with app.app_context():
 
 @app.route('/start', methods=['POST'])
 def start():
-    """Register new user or return existing user"""
+    """Register new user or return existing user
+
+    Accepts optional 'referrer_telegram_id' in JSON payload to record a referral when a new user signs up.
+    """
     try:
         data = request.json or {}
         telegram_id = data.get('telegram_id')
+        referrer_id = data.get('referrer_telegram_id')
         
         if not telegram_id:
             return jsonify({'error': 'Missing telegram_id'}), 400
@@ -73,19 +77,31 @@ def start():
         
         # Check if user exists
         user = get_user(telegram_id)
-        
+        created = False
         if not user:
             # Create new user
             user = create_user(telegram_id)
+            created = True
             if not user:
                 return jsonify({'error': 'Failed to create user'}), 500
+
+            # If referrer provided, attempt to record referral
+            if referrer_id:
+                try:
+                    referrer_id = int(referrer_id)
+                    # Don't allow self-referral
+                    if referrer_id != telegram_id:
+                        add_referral(referrer_id, telegram_id)
+                except Exception:
+                    # ignore invalid referrer
+                    pass
         
         return jsonify({
             'status': 'success',
-            'user': format_user_response(user)
+            'user': format_user_response(user),
+            'created': created
         }), 200
     except Exception as e:
-        # Log stacktrace so we can inspect in Railway logs, and return a minimal error
         import traceback
         traceback.print_exc()
         return jsonify({'error': 'Internal server error', 'detail': str(e)}), 500
@@ -259,6 +275,28 @@ def giveaway_status():
         'giveaway': giveaway
     }), 200
 
+@app.route('/giveaway/start', methods=['POST'])
+def giveaway_start():
+    """Admin endpoint to start a giveaway manually if none active"""
+    data = request.json or {}
+    admin_id = data.get('admin_telegram_id') or request.headers.get('X-Admin-Telegram')
+
+    if admin_id is None:
+        return jsonify({'error': 'Missing admin id'}), 403
+    try:
+        admin_id = int(admin_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid admin id'}), 403
+
+    if admin_id != 8998575936:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    started = GiveawayManager.check_and_start_giveaway()
+    if started:
+        return jsonify({'status': 'success', 'message': 'Giveaway started'}), 200
+    else:
+        return jsonify({'status': 'no_action', 'message': 'Giveaway already active or pool insufficient'}), 200
+
 @app.route('/giveaway/join', methods=['POST'])
 def giveaway_join():
     """Join current giveaway"""
@@ -294,10 +332,22 @@ def giveaway_join():
 @app.route('/giveaway/end/<int:giveaway_id>', methods=['POST'])
 def giveaway_end(giveaway_id):
     """End giveaway and draw winner (admin endpoint)"""
-    # In production, verify admin token here
-    
+    data = request.json or {}
+    admin_id = data.get('admin_telegram_id') or request.headers.get('X-Admin-Telegram')
+
+    if admin_id is None:
+        return jsonify({'error': 'Missing admin id'}), 403
+
+    try:
+        admin_id = int(admin_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid admin id'}), 403
+
+    if admin_id != 8998575936:
+        return jsonify({'error': 'Forbidden'}), 403
+
     success, result = GiveawayManager.end_giveaway_round(giveaway_id)
-    
+
     if success:
         return jsonify({
             'status': 'success',
