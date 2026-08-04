@@ -77,15 +77,27 @@ def start():
         return jsonify({'error': 'Failed to create user'}), 500
 
 @app.route('/me', methods=['GET'])
-@require_telegram_id
-def get_me(telegram_id):
-    """Get current user data"""
+def get_me():
+    """Get current user data - accepts telegram_id from query param or header"""
+    # Try to get telegram_id from query params first (for GET requests)
+    telegram_id = request.args.get('telegram_id')
+    
+    # If not in query params, try headers
+    if not telegram_id:
+        telegram_id = request.headers.get('X-Telegram-ID')
+    
+    if not telegram_id:
+        return jsonify({'error': 'Missing telegram_id'}), 400
+    
+    if not validate_telegram_id(telegram_id):
+        return jsonify({'error': 'Invalid telegram_id format'}), 400
+    
     user = get_user(telegram_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    return jsonify(user), 200
+    return jsonify({'user': user}), 200
 
 # ============================================
 # REFERRAL ENDPOINTS
@@ -260,7 +272,7 @@ def get_ranking():
         for i, user in enumerate(top_users)
     ]
     
-    return jsonify(ranking), 200
+    return jsonify({'ranking': ranking}), 200
 
 # ============================================
 # GIVEAWAY ENDPOINTS
