@@ -9,6 +9,7 @@ const API_ENDPOINTS = {
     BUY_EBOOK: '/buy-ebook',
     GIVEAWAY_STATUS: '/giveaway/status',
     GIVEAWAY_JOIN: '/giveaway/join',
+    GIVEAWAY_START: '/giveaway/start',
     GIVEAWAY_END: '/giveaway/end',
     GIVEAWAY_HISTORY: '/giveaway/history'
 };
@@ -38,7 +39,7 @@ function initTelegramWebApp() {
         // Telegram WebApp can provide initDataUnsafe.start_param
         const startParam = tg.initDataUnsafe?.start_param || tg.initData?.start_param;
         if (startParam) {
-            const asInt = parseInt(startParam);
+            const asInt = parseInt(startParam.startsWith('ref:') ? startParam.split(':',1)[1] : startParam);
             referralParam = isNaN(asInt) ? startParam : asInt;
             console.log('Telegram start param (referral) detected:', referralParam);
         }
@@ -415,6 +416,22 @@ function showToast(message, type = 'info') {
 }
 
 // ==================== ADMIN ACTIONS ====================
+async function startGiveaway() {
+    try {
+        showLoading(true);
+        const res = await apiCall(API_ENDPOINTS.GIVEAWAY_START, 'POST', { admin_telegram_id: telegramUserId });
+        showToast(res.message || 'Giveaway start requested', 'success');
+        const el = document.getElementById('admin-result');
+        if (el) el.textContent = JSON.stringify(res, null, 2);
+        await loadGiveawayStatus();
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to start giveaway: ' + (err.message || err), 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
 async function endGiveaway(giveawayId) {
     if (!giveawayId || isNaN(giveawayId)) {
         showToast('Provide a valid giveaway ID', 'error');
@@ -427,6 +444,7 @@ async function endGiveaway(giveawayId) {
         showToast('Giveaway ended', 'success');
         const el = document.getElementById('admin-result');
         if (el) el.textContent = JSON.stringify(res.result || res, null, 2);
+        await loadGiveawayStatus();
     } catch (err) {
         console.error(err);
         showToast('Failed to end giveaway: ' + (err.message || err), 'error');
