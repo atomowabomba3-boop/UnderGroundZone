@@ -37,6 +37,8 @@ class GiveawayManager:
             return False
         if state.get('pool_cents', 0) < GHOST_THRESHOLD:
             return False
+        if duration_minutes is None:
+            duration_minutes = 60
         cur = self.db.conn.cursor()
         cur.execute('UPDATE giveaway_state SET is_active = 1, started_at = ?, duration_minutes = ? WHERE id = 1', (datetime.utcnow().isoformat(), duration_minutes))
         self.db.conn.commit()
@@ -44,7 +46,7 @@ class GiveawayManager:
 
     def join(self, telegram_id, cost=1):
         state = self._state()
-        if not state or state['is_active'] != 1:
+        if not state or state.get('is_active') != 1:
             return False, 'giveaway not active'
         # check user has enough tickets
         user = self.db.get_user(telegram_id)
@@ -57,9 +59,9 @@ class GiveawayManager:
         if not ok:
             return False, 'failed to deduct tickets'
         parts = state['participants']
-        if telegram_id in parts:
+        if str(telegram_id) in [str(p) for p in parts]:
             return False, 'already joined'
-        parts.append(telegram_id)
+        parts.append(str(telegram_id))
         cur = self.db.conn.cursor()
         cur.execute('UPDATE giveaway_state SET participants = ? WHERE id = 1', (json.dumps(parts),))
         self.db.conn.commit()
@@ -67,7 +69,7 @@ class GiveawayManager:
 
     def end(self):
         state = self._state()
-        if not state or state['is_active'] != 1:
+        if not state or state.get('is_active') != 1:
             return {'error': 'no active giveaway'}
         if not state['participants']:
             # reset state

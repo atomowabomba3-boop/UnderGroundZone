@@ -96,6 +96,8 @@ class Database:
         ref = self.get_user(referrer_id)
         if ref:
             total = ref.get('referrals', 0)
+            # import locally to avoid circular import at module load
+            from utils import referral_bonus_for_thresholds
             bonus = referral_bonus_for_thresholds(total)
             if bonus > 0:
                 cur.execute('UPDATE users SET tickets = tickets + ? WHERE telegram_id = ?', (bonus, str(referrer_id)))
@@ -117,7 +119,7 @@ class Database:
         ebooks = user.get('ebooks_owned', [])
         if ebook_id in ebooks:
             return False
-        ebooks.append(ebook_id)
+        ebooks.append(int(ebook_id))
         cur = self.conn.cursor()
         cur.execute('UPDATE users SET ebooks_owned = ?, tickets = tickets + ? WHERE telegram_id = ?', (json.dumps(ebooks), tickets_awarded, str(telegram_id)))
         self.conn.commit()
@@ -185,7 +187,7 @@ class Database:
         order_token = secrets.token_urlsafe(16)
         now = datetime.utcnow().isoformat()
         cur = self.conn.cursor()
-        cur.execute('INSERT INTO orders (order_token, telegram_id, ebook_id, amount_cents, mode, status, created_at) VALUES (?,?,?,?,?,?,?)', (order_token, str(telegram_id), int(ebook_id), int(amount_cents), mode, 'pending', now))
+        cur.execute('INSERT INTO orders (order_token, telegram_id, ebook_id, amount_cents, mode, status, created_at) VALUES (?,?,?,?,?,?,?)', (order_token, str(telegram_id), int(ebook_id), int(amount_cents), str(mode), 'pending', now))
         self.conn.commit()
         return order_token
 
@@ -215,6 +217,3 @@ def sqlite_row(cursor, row):
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
-
-# For referral bonus lookup without circular import
-from utils import referral_bonus_for_thresholds
