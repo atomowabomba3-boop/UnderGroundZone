@@ -59,30 +59,36 @@ with app.app_context():
 @app.route('/start', methods=['POST'])
 def start():
     """Register new user or return existing user"""
-    data = request.json or {}
-    telegram_id = data.get('telegram_id')
-    
-    if not telegram_id:
-        return jsonify({'error': 'Missing telegram_id'}), 400
-    
     try:
-        telegram_id = int(telegram_id)
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid telegram_id'}), 400
-    
-    # Check if user exists
-    user = get_user(telegram_id)
-    
-    if not user:
-        # Create new user
-        user = create_user(telegram_id)
+        data = request.json or {}
+        telegram_id = data.get('telegram_id')
+        
+        if not telegram_id:
+            return jsonify({'error': 'Missing telegram_id'}), 400
+        
+        try:
+            telegram_id = int(telegram_id)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid telegram_id'}), 400
+        
+        # Check if user exists
+        user = get_user(telegram_id)
+        
         if not user:
-            return jsonify({'error': 'Failed to create user'}), 500
-    
-    return jsonify({
-        'status': 'success',
-        'user': format_user_response(user)
-    }), 200
+            # Create new user
+            user = create_user(telegram_id)
+            if not user:
+                return jsonify({'error': 'Failed to create user'}), 500
+        
+        return jsonify({
+            'status': 'success',
+            'user': format_user_response(user)
+        }), 200
+    except Exception as e:
+        # Log stacktrace so we can inspect in Railway logs, and return a minimal error
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error', 'detail': str(e)}), 500
 
 @app.route('/me', methods=['GET'])
 @require_telegram_id
