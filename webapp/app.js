@@ -109,8 +109,46 @@ document.getElementById("send-sim").addEventListener("click", async ()=>{
   loadUser();
 });
 
+// DEBUG / fallback for Telegram WebApp
+function isTelegramWebApp(){
+  try{
+    return !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe);
+  }catch(e){ return false; }
+}
+
+function showTelegramMissingBanner(){
+  const container = document.createElement('div');
+  container.style.background = '#ffefc8';
+  container.style.color = '#000';
+  container.style.padding = '8px';
+  container.style.borderRadius = '6px';
+  container.style.margin = '8px 0';
+  container.style.fontSize = '14px';
+  container.innerHTML = `
+    <strong>Uwaga:</strong> Wygląda na to, że aplikacja nie została otwarta z poziomu Telegrama.<br/>
+    Otwórz ją przez przycisk Web App wysłany przez bota w Telegramie, lub wpisz ręcznie telegram_id poniżej do testów.<br/>
+    <input id="manual-tid" placeholder="telegram_id (np. 1001)" style="margin-top:6px;padding:6px;border-radius:6px;border:1px solid #ccc;" />
+    <button id="apply-tid" style="margin-left:6px;padding:6px 8px;border-radius:6px;background:#ff6b6b;color:#fff;border:none;">Zastosuj</button>
+  `;
+  document.body.prepend(container);
+  document.getElementById('apply-tid').addEventListener('click', ()=>{
+    const val = document.getElementById('manual-tid').value.trim();
+    if(val){
+      telegram_id = val;
+      loadUser();
+    }
+  });
+}
+
 (async function init(){
-  try{ if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe){ const u = window.Telegram.WebApp.initDataUnsafe.user; if(u && u.id) telegram_id = String(u.id); } }catch(e){}
+  try{ if(isTelegramWebApp()){
+      const u = window.Telegram.WebApp.initDataUnsafe.user; if(u && u.id) telegram_id = String(u.id);
+    } else {
+      showTelegramMissingBanner();
+      const qtid = getQueryParam('telegram_id') || getQueryParam('ref') || null;
+      if(qtid) telegram_id = qtid;
+    }
+  }catch(e){}
   await loadUser();
   await loadEbooks();
   await loadRanking();
