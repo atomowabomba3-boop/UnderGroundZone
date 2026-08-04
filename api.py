@@ -34,15 +34,17 @@ def get_frontend_base():
     except RuntimeError:
         return ''
 
-# Helper to build referral link; prefer bot deep-link when BOT_USERNAME provided
-# Hardcoded fallback as requested
+# Helper to build referral link; prefer frontend web link when available
+# Falls back to bot deep-link if no frontend URL is configured
 def build_referral_link(telegram_id):
-    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME') or 'UdrgroundBot'
-    if bot_username:
-        return f"https://t.me/{bot_username}?start={telegram_id}"
     frontend_base = get_frontend_base()
     if frontend_base:
         return f"{frontend_base}/?ref={telegram_id}"
+
+    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME') or 'UdrgroundBot'
+    if bot_username:
+        return f"https://t.me/{bot_username}?start={telegram_id}"
+
     try:
         return f"{request.host_url.rstrip('/')}/?ref={telegram_id}"
     except RuntimeError:
