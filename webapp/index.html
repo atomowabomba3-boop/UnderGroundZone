@@ -172,6 +172,13 @@
                         <input type="number" id="admin-giveaway-id" class="referral-input" placeholder="Giveaway ID">
                         <button class="btn btn-primary" onclick="endGiveaway(parseInt(document.getElementById('admin-giveaway-id').value))">End Giveaway</button>
                     </div>
+
+                    <div class="admin-row" style="margin-top:12px;">
+                        <label>Admin Actions:</label>
+                        <button class="btn btn-success" onclick="startGiveaway()">Start Giveaway</button>
+                        <span id="admin-giveaway-status" style="margin-left:12px;color:#fff;"></span>
+                    </div>
+
                     <div id="admin-result" style="margin-top:12px;color:#fff;background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;"></div>
                 </div>
             </section>
