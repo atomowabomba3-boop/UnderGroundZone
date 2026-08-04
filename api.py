@@ -34,6 +34,20 @@ def get_frontend_base():
     except RuntimeError:
         return ''
 
+# Helper to build referral link; prefer bot deep-link when BOT_USERNAME provided
+def build_referral_link(telegram_id):
+    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME')
+    if bot_username:
+        # Use bot deep-link
+        return f"https://t.me/{bot_username}?start={telegram_id}"
+    frontend_base = get_frontend_base()
+    if frontend_base:
+        return f"{frontend_base}/?ref={telegram_id}"
+    try:
+        return f"{request.host_url.rstrip('/')}/?ref={telegram_id}"
+    except RuntimeError:
+        return None
+
 # Serve index at root so Telegram Web App gets the front page
 @app.route('/')
 def index():
@@ -108,13 +122,9 @@ def start():
                     # ignore invalid referrer
                     pass
         
-        # Build response and include referral link for this user using public frontend base if set
+        # Build response and include referral link for this user
         user_resp = format_user_response(user)
-        frontend_base = get_frontend_base()
-        if frontend_base:
-            user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
-        else:
-            user_resp['referral_link'] = None
+        user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
         
         return jsonify({
             'status': 'success',
@@ -136,11 +146,7 @@ def get_me(telegram_id):
         return jsonify({'error': 'User not found'}), 404
     
     user_resp = format_user_response(user)
-    frontend_base = get_frontend_base()
-    if frontend_base:
-        user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
-    else:
-        user_resp['referral_link'] = None
+    user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
     
     return jsonify({
         'status': 'success',
@@ -170,11 +176,7 @@ def add_referral_endpoint():
     if success:
         referrer = get_user(referrer_telegram_id)
         ref_resp = format_user_response(referrer)
-        frontend_base = get_frontend_base()
-        if frontend_base:
-            ref_resp['referral_link'] = f"{frontend_base}/?ref={ref_resp.get('telegram_id')}"
-        else:
-            ref_resp['referral_link'] = None
+        ref_resp['referral_link'] = build_referral_link(ref_resp.get('telegram_id'))
         return jsonify({
             'status': 'success',
             'message': 'Referral added',
@@ -289,11 +291,7 @@ def buy_ebook_webhook():
         
         updated_user = get_user(telegram_id)
         user_resp = format_user_response(updated_user)
-        frontend_base = get_frontend_base()
-        if frontend_base:
-            user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
-        else:
-            user_resp['referral_link'] = None
+        user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
         return jsonify({
             'status': 'success',
             'message': 'Ebook purchased successfully',
@@ -361,11 +359,7 @@ def giveaway_join():
     if success:
         updated_user = get_user(telegram_id)
         user_resp = format_user_response(updated_user)
-        frontend_base = get_frontend_base()
-        if frontend_base:
-            user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
-        else:
-            user_resp['referral_link'] = None
+        user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
         return jsonify({
             'status': 'success',
             'message': message,
