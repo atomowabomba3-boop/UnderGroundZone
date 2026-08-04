@@ -34,16 +34,22 @@ def get_frontend_base():
     except RuntimeError:
         return ''
 
-# Helper to build referral link; prefer frontend web link when available
-# Falls back to bot deep-link if no frontend URL is configured
+# Helper to build referral link; prefer bot deep-link with a 'ref:' payload so
+# Telegram passes start_param that we can parse.
+# Example: https://t.me/udrgroundbot?start=ref:48485992
 def build_referral_link(telegram_id):
+    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME') or 'UdrgroundBot'
+    if bot_username:
+        try:
+            return f"https://t.me/{bot_username}?start=ref:{int(telegram_id)}"
+        except Exception:
+            # fallback to string interpolation if id not int-castable
+            return f"https://t.me/{bot_username}?start=ref:{telegram_id}"
+
+    # Fallback to frontend link only if bot username missing
     frontend_base = get_frontend_base()
     if frontend_base:
         return f"{frontend_base}/?ref={telegram_id}"
-
-    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME') or 'UdrgroundBot'
-    if bot_username:
-        return f"https://t.me/{bot_username}?start={telegram_id}"
 
     try:
         return f"{request.host_url.rstrip('/')}/?ref={telegram_id}"
@@ -89,6 +95,8 @@ def start():
     """Register new user or return existing user
 
     Accepts optional 'referrer_telegram_id' in JSON payload to record a referral when a new user signs up.
+    The referrer_telegram_id can be either a bare numeric id or a string payload like 'ref:12345' coming from
+    Telegram deep-link start parameter. We robustly parse both forms here.
     """
     try:
         data = request.json or {}
@@ -116,12 +124,22 @@ def start():
             # If referrer provided, attempt to record referral
             if referrer_id:
                 try:
-                    referrer_id = int(referrer_id)
+                    # Accept 'ref:12345', 'start=ref:12345', or plain numeric
+                    if isinstance(referrer_id, str):
+                        rid = referrer_id
+                        if rid.startswith('start='):
+                            rid = rid.split('=', 1)[1]
+                        if rid.startswith('ref:'):
+                            rid = rid.split(':', 1)[1]
+                        referrer_id = int(rid)
+                    else:
+                        referrer_id = int(referrer_id)
+
                     # Don't allow self-referral
                     if referrer_id != telegram_id:
                         add_referral(referrer_id, telegram_id)
                 except Exception:
-                    # ignore invalid referrer
+                    # ignore invalid referrer values
                     pass
         
         # Build response and include referral link for this user
@@ -168,7 +186,12 @@ def add_referral_endpoint():
         return jsonify({'error': 'Missing telegram_ids'}), 400
     
     try:
-        referrer_telegram_id = int(referrer_telegram_id)
+        # support 'ref:123' forms here too
+        if isinstance(referrer_telegram_id, str) and referrer_telegram_id.startswith('ref:'):
+            referrer_telegram_id = int(referrer_telegram_id.split(':', 1)[1])
+        else:
+            referrer_telegram_id = int(referrer_telegram_id)
+
         referred_telegram_id = int(referred_telegram_id)
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid telegram_ids'}), 400
@@ -327,113 +350,3 @@ def giveaway_start():
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid admin id'}), 403
 
-    if admin_id != 8998575936:
-        return jsonify({'error': 'Forbidden'}), 403
-
-    started = GiveawayManager.check_and_start_giveaway()
-    if started:
-        return jsonify({'status': 'success', 'message': 'Giveaway started'}), 200
-    else:
-        return jsonify({'status': 'no_action', 'message': 'Giveaway already active or pool insufficient'}), 200
-
-@app.route('/giveaway/join', methods=['POST'])
-def giveaway_join():
-    """Join current giveaway"""
-    data = request.json or {}
-    telegram_id = data.get('telegram_id')
-    tickets_to_spend = data.get('tickets', 1)
-    
-    if not telegram_id:
-        return jsonify({'error': 'Missing telegram_id'}), 400
-    
-    try:
-        telegram_id = int(telegram_id)
-        tickets_to_spend = int(tickets_to_spend)
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid parameters'}), 400
-    
-    user = get_user(telegram_id)
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    success, message = GiveawayManager.user_join_giveaway(user['id'], tickets_to_spend)
-    
-    if success:
-        updated_user = get_user(telegram_id)
-        user_resp = format_user_response(updated_user)
-        user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
-        return jsonify({
-            'status': 'success',
-            'message': message,
-            'user': user_resp
-        }), 200
-    else:
-        return jsonify({'error': message}), 400
-
-@app.route('/giveaway/end/<int:giveaway_id>', methods=['POST'])
-def giveaway_end(giveaway_id):
-    """End giveaway and draw winner (admin endpoint)"""
-    data = request.json or {}
-    admin_id = data.get('admin_telegram_id') or request.headers.get('X-Admin-Telegram')
-
-    if admin_id is None:
-        return jsonify({'error': 'Missing admin id'}), 403
-
-    try:
-        admin_id = int(admin_id)
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid admin id'}), 403
-
-    if admin_id != 8998575936:
-        return jsonify({'error': 'Forbidden'}), 403
-
-    success, result = GiveawayManager.end_giveaway_round(giveaway_id)
-
-    if success:
-        return jsonify({
-            'status': 'success',
-            'result': result
-        }), 200
-    else:
-        return jsonify({'error': result}), 500
-
-@app.route('/giveaway/history', methods=['GET'])
-def giveaway_history():
-    """Get giveaway history"""
-    limit = request.args.get('limit', 10, type=int)
-    history = GiveawayManager.get_giveaway_history(limit)
-    
-    formatted_history = [
-        {
-            'id': g['id'],
-            'pool_amount': g['pool_amount'],
-            'winner_id': g['winner_id'],
-            'ended_at': g['ended_at']
-        }
-        for g in history
-    ]
-    
-    return jsonify({
-        'status': 'success',
-        'history': formatted_history
-    }), 200
-
-# ==================== HEALTH CHECK ====================
-
-def health():
-    """Health check endpoint"""
-    return jsonify({'status':'ok'}), 200
-
-# ==================== ERROR HANDLERS ====================
-
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
-
-if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
