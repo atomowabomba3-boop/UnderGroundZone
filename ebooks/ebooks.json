@@ -1,7 +1,20 @@
 {
-  "ebooks": [
-    { "id": 1, "title": "Intro to UnderGroundZone", "price_usd": 2, "filename": "intro.pdf", "image": "/images/intro.jpg" },
-    { "id": 2, "title": "Deep Dives", "price_usd": 5, "filename": "deep.pdf", "image": "/images/deep.jpg" },
-    { "id": 3, "title": "Masterclass", "price_usd": 10, "filename": "master.pdf", "image": "/images/master.jpg" }
-  ]
+  "ebook-1": {
+    "filename": "ebook-1.pdf",
+    "title": "UnderGroundZone — Kompendium",
+    "price_usd": 2.0,
+    "tickets_awarded": 50
+  },
+  "ebook-2": {
+    "filename": "ebook-2.pdf",
+    "title": "UnderGroundZone — Zaawansowane techniki",
+    "price_usd": 5.0,
+    "tickets_awarded": 150
+  },
+  "ebook-3": {
+    "filename": "ebook-3.pdf",
+    "title": "UnderGroundZone — Mistrzostwo",
+    "price_usd": 10.0,
+    "tickets_awarded": 500
+  }
 }
