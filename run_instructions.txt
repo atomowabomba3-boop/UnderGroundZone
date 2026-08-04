@@ -1,0 +1,12 @@
+# Brief instructions: how to run the send_webapp_button.py script on Railway
+
+1) In your Railway project settings, set the environment variable BOT_TOKEN to your bot token.
+2) (Optional) set WEBAPP_URL to your production URL if different from default.
+3) In Railway web UI, go to "Deployments" or "Environments" and choose "Run Command" (one-off/Console) and run:
+
+   python send_webapp_button.py 8998575936
+
+4) You should receive a message in Telegram with a button labeled "Otwórz". Click that button (in the Telegram app) — do NOT choose "Open in browser".
+5) After clicking, the Web App should open inside Telegram and the yellow banner should disappear (telegram_id will be filled automatically).
+
+If you don't see the message, check Railway logs for the one-off command output (it prints Telegram's response).
