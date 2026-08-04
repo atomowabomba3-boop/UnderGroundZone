@@ -17,6 +17,7 @@ if _db_dir and not os.path.exists(_db_dir):
 def init_db():
     """Initialize database with all required tables"""
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
     # Users table
@@ -56,6 +57,22 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Seed sample ebooks if table empty
+    try:
+        cursor.execute('SELECT COUNT(*) as c FROM ebooks')
+        count = cursor.fetchone()['c']
+        if count == 0:
+            # Using placeholder cover_image URLs; file_path references raw files in repo/ebooks (if available) or names
+            cursor.execute('INSERT INTO ebooks (name, price, tickets_reward, file_path, cover_image) VALUES (?, ?, ?, ?, ?)',
+                           ('Learn JS', 2.0, 50, 'learn_js.pdf', 'https://via.placeholder.com/300x420.png?text=Learn+JS'))
+            cursor.execute('INSERT INTO ebooks (name, price, tickets_reward, file_path, cover_image) VALUES (?, ?, ?, ?, ?)',
+                           ('Python Basics', 5.0, 150, 'python_basics.pdf', 'https://via.placeholder.com/300x420.png?text=Python+Basics'))
+            cursor.execute('INSERT INTO ebooks (name, price, tickets_reward, file_path, cover_image) VALUES (?, ?, ?, ?, ?)',
+                           ('Advanced Security', 10.0, 500, 'advanced_security.pdf', 'https://via.placeholder.com/300x420.png?text=Advanced+Security'))
+    except Exception:
+        # If seeding fails, continue without crashing
+        pass
     
     # Giveaway table
     cursor.execute('''
