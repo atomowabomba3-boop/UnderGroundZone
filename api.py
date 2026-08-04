@@ -96,9 +96,16 @@ def start():
                     # ignore invalid referrer
                     pass
         
+        # Build response and include referral link for this user
+        user_resp = format_user_response(user)
+        try:
+            user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
+        except Exception:
+            user_resp['referral_link'] = None
+        
         return jsonify({
             'status': 'success',
-            'user': format_user_response(user),
+            'user': user_resp,
             'created': created
         }), 200
     except Exception as e:
@@ -115,9 +122,15 @@ def get_me(telegram_id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
+    user_resp = format_user_response(user)
+    try:
+        user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
+    except Exception:
+        user_resp['referral_link'] = None
+    
     return jsonify({
         'status': 'success',
-        'user': format_user_response(user)
+        'user': user_resp
     }), 200
 
 # ==================== REFERRAL ENDPOINTS ====================
@@ -142,10 +155,15 @@ def add_referral_endpoint():
     
     if success:
         referrer = get_user(referrer_telegram_id)
+        ref_resp = format_user_response(referrer)
+        try:
+            ref_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={ref_resp.get('telegram_id')}"
+        except Exception:
+            ref_resp['referral_link'] = None
         return jsonify({
             'status': 'success',
             'message': 'Referral added',
-            'referrer': format_user_response(referrer)
+            'referrer': ref_resp
         }), 200
     else:
         return jsonify({'error': 'Failed to add referral'}), 400
@@ -255,10 +273,15 @@ def buy_ebook_webhook():
         GiveawayManager.check_and_start_giveaway()
         
         updated_user = get_user(telegram_id)
+        user_resp = format_user_response(updated_user)
+        try:
+            user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
+        except Exception:
+            user_resp['referral_link'] = None
         return jsonify({
             'status': 'success',
             'message': 'Ebook purchased successfully',
-            'user': format_user_response(updated_user)
+            'user': user_resp
         }), 200
     else:
         return jsonify({'error': 'Failed to process purchase'}), 500
@@ -321,10 +344,15 @@ def giveaway_join():
     
     if success:
         updated_user = get_user(telegram_id)
+        user_resp = format_user_response(updated_user)
+        try:
+            user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
+        except Exception:
+            user_resp['referral_link'] = None
         return jsonify({
             'status': 'success',
             'message': message,
-            'user': format_user_response(updated_user)
+            'user': user_resp
         }), 200
     else:
         return jsonify({'error': message}), 400
