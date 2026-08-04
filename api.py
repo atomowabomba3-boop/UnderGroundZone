@@ -22,6 +22,18 @@ static_dir = os.path.join(base_dir, 'webapp')
 app = Flask(__name__, static_folder=static_dir, static_url_path='')
 CORS(app)
 
+# Helper to determine public frontend base used in referral links
+def get_frontend_base():
+    # Prefer explicit environment variable (set this to your public webapp URL, e.g. https://your-app.example)
+    env = os.getenv('FRONTEND_URL') or os.getenv('FRONTEND_BASE') or os.getenv('WEBAPP_URL')
+    if env:
+        return env.rstrip('/')
+    # Fallback to request.host_url when in request context (may be Telegram proxy -> not desired)
+    try:
+        return request.host_url.rstrip('/')
+    except RuntimeError:
+        return ''
+
 # Serve index at root so Telegram Web App gets the front page
 @app.route('/')
 def index():
@@ -96,11 +108,12 @@ def start():
                     # ignore invalid referrer
                     pass
         
-        # Build response and include referral link for this user
+        # Build response and include referral link for this user using public frontend base if set
         user_resp = format_user_response(user)
-        try:
-            user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
-        except Exception:
+        frontend_base = get_frontend_base()
+        if frontend_base:
+            user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
+        else:
             user_resp['referral_link'] = None
         
         return jsonify({
@@ -123,9 +136,10 @@ def get_me(telegram_id):
         return jsonify({'error': 'User not found'}), 404
     
     user_resp = format_user_response(user)
-    try:
-        user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
-    except Exception:
+    frontend_base = get_frontend_base()
+    if frontend_base:
+        user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
+    else:
         user_resp['referral_link'] = None
     
     return jsonify({
@@ -156,9 +170,10 @@ def add_referral_endpoint():
     if success:
         referrer = get_user(referrer_telegram_id)
         ref_resp = format_user_response(referrer)
-        try:
-            ref_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={ref_resp.get('telegram_id')}"
-        except Exception:
+        frontend_base = get_frontend_base()
+        if frontend_base:
+            ref_resp['referral_link'] = f"{frontend_base}/?ref={ref_resp.get('telegram_id')}"
+        else:
             ref_resp['referral_link'] = None
         return jsonify({
             'status': 'success',
@@ -274,9 +289,10 @@ def buy_ebook_webhook():
         
         updated_user = get_user(telegram_id)
         user_resp = format_user_response(updated_user)
-        try:
-            user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
-        except Exception:
+        frontend_base = get_frontend_base()
+        if frontend_base:
+            user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
+        else:
             user_resp['referral_link'] = None
         return jsonify({
             'status': 'success',
@@ -345,9 +361,10 @@ def giveaway_join():
     if success:
         updated_user = get_user(telegram_id)
         user_resp = format_user_response(updated_user)
-        try:
-            user_resp['referral_link'] = f"{request.host_url.rstrip('/')}?ref={user_resp.get('telegram_id')}"
-        except Exception:
+        frontend_base = get_frontend_base()
+        if frontend_base:
+            user_resp['referral_link'] = f"{frontend_base}/?ref={user_resp.get('telegram_id')}"
+        else:
             user_resp['referral_link'] = None
         return jsonify({
             'status': 'success',
