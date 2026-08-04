@@ -1,41 +1,37 @@
- # UnderGroundZone
+# UnderGroundZone
 
-Projekt Telegram Mini App — backend (Flask) + frontend (simple HTML/JS). Gotowy do wdrożenia na Railway.
+This repository contains a small Flask backend and a simple frontend for the UnderGroundZone Telegram Mini App.
 
-Pliki
-- api.py — główny Flask app z endpointami
-- database.py — SQLite wrapper i helpery
-- giveaway.py — logika giveaway (start/join/end, wybór zwycięzcy)
-- utils.py — helpery (ładowanie ebooków, bonusy)
-- start.py — lokalny entrypoint (gunicorn preferowany)
-- requirements.txt
-- /webapp — frontend
-- /ebooks — pliki PDF i metadata
+Quick start (local):
 
-Wymagane zmienne środowiskowe (Railway):
-- TELEGRAM_BOT_TOKEN — token bota (opcjonalne, wymagane do wysyłania przycisków Web App)
-- WEBHOOK_SECRET — sekret, który będzie wysyłany w nagłówku X-WEBHOOK-SECRET do /buy-ebook (silne zalecenie)
+1. Copy .env.example to .env and fill secrets (CRYPTO_WEBHOOK_SECRET, ADMIN_SECRET, BOT_TOKEN if used).
 
-Uruchomienie lokalne:
-- python -m venv venv
-- source venv/bin/activate
-- pip install -r requirements.txt
-- flask run
+2. Create a virtualenv and install dependencies:
 
-Production / Railway (zalecane):
-- Start command: gunicorn start:app
-- Dodaj pliki PDF do katalogu /ebooks oraz obrazy do /webapp/images
-- Ustaw zmienne środowiskowe (TELEGRAM_BOT_TOKEN, WEBHOOK_SECRET) w Railway Project -> Settings -> Variables
-- Po deployu Railway poda publiczny URL (np. https://project-name.up.railway.app/) — to będzie adres Twojej Mini App.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Bezpieczeństwo:
-- Traktuj TELEGRAM_BOT_TOKEN i WEBHOOK_SECRET jak sekrety. Nie umieszczaj ich w repo.
-- Jeśli token wyciekł — rotuj go natychmiast przez @BotFather.
+3. Seed the database with sample data:
 
-Dalsze kroki (opcjonalnie):
-- Dodać walidację HMAC dla webhooków od procesora płatności (bardziej bezpieczna niż prosty header)
-- Przenieść SQLite na Postgres w Railway dla trwałości
-- Dodać testy i migracje (Flask-Migrate / Alembic)
+```bash
+python seed_db.py
+```
 
+4. Run locally:
 
-*force rebuild triggered on Railway by Copilot*
+```bash
+gunicorn start:app --bind 0.0.0.0:5000
+```
+
+Open http://localhost:5000/?telegram_id=12345 to simulate a user (or use Telegram WebApp to pass real data).
+
+Deploying to Railway / Heroku:
+- Repository contains a Procfile and Dockerfile ready for container deployments.
+- Set environment variables in the deployment provider (CRYPTO_WEBHOOK_SECRET and ADMIN_SECRET at minimum).
+
+Security note:
+- Do NOT commit real secrets into the repo. Use environment variables on the host.
+
