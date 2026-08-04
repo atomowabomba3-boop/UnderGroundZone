@@ -13,6 +13,9 @@ const API_ENDPOINTS = {
     GIVEAWAY_HISTORY: '/giveaway/history'
 };
 
+// Admin ID
+const ADMIN_TELEGRAM_ID = 8998575936;
+
 // ==================== TELEGRAM INTEGRATION ====================
 let telegramUserId = null;
 let currentUser = null;
@@ -35,6 +38,12 @@ function initTelegramWebApp() {
         console.warn('Telegram WebApp not available, using test ID');
     }
     
+    // Show admin tab only for admin
+    if (String(telegramUserId) === String(ADMIN_TELEGRAM_ID)) {
+        const adminTabBtn = document.getElementById('nav-admin-tab');
+        if (adminTabBtn) adminTabBtn.style.display = '';
+    }
+
     return telegramUserId;
 }
 
@@ -105,7 +114,7 @@ function updateUserDisplay() {
     // Update home tab
     document.getElementById('home-tickets').textContent = currentUser.tickets;
     document.getElementById('home-referrals').textContent = currentUser.referrals_count;
-    document.getElementById('home-ebooks').textContent = currentUser.ebooks_owned.length;
+    document.getElementById('home-ebooks').textContent = (Array.isArray(currentUser.ebooks_owned) ? currentUser.ebooks_owned.length : 0);
     
     // Update referral tab
     document.getElementById('referral-count').textContent = currentUser.referrals_count;
@@ -128,37 +137,63 @@ function calculateReferralBonus(refCount) {
 }
 
 async function loadEBooks() {
+    const ebooksList = document.getElementById('ebooks-list');
+    if (!ebooksList) return;
+
+    ebooksList.innerHTML = '<div class="loading">Loading eBooks...</div>';
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
-        showLoading(true);
-        const data = await apiCall(API_ENDPOINTS.EBOOKS);
-        const ebooksList = document.getElementById('ebooks-list');
-        
+        const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EBOOKS}`, { signal: controller.signal, headers: { 'Content-Type': 'application/json' } });
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+            throw new Error('API returned ' + response.status);
+        }
+
+        const data = await response.json();
+
+        if (!data || !Array.isArray(data.ebooks)) {
+            ebooksList.innerHTML = '<div class="loading">No ebooks available</div>';
+            return;
+        }
+
         if (data.ebooks.length === 0) {
             ebooksList.innerHTML = '<div class="loading">No ebooks available</div>';
             return;
         }
-        
-        ebooksList.innerHTML = data.ebooks.map(ebook => `
-            <div class="ebook-card">
-                <div class="ebook-cover ${currentUser?.ebooks_owned.includes(ebook.id) ? 'owned' : ''}">
-                    📕
+
+        const owned = (currentUser && Array.isArray(currentUser.ebooks_owned)) ? currentUser.ebooks_owned : [];
+        ebooksList.innerHTML = data.ebooks.map(ebook => {
+            const ownedClass = owned.includes(ebook.id) ? 'owned' : '';
+            const buyBtn = owned.includes(ebook.id)
+                ? `<button class="btn-buy" disabled>Owned ✓</button>`
+                : `<button class="btn-buy" onclick="buyEbook(${ebook.id})">Buy</button>`;
+            return `
+                <div class="ebook-card">
+                    <div class="ebook-cover ${ownedClass}">📕</div>
+                    <div class="ebook-info">
+                        <div class="ebook-name">${ebook.name}</div>
+                        <div class="ebook-price">$${ebook.price}</div>
+                        <div class="ebook-tickets">🎫 ${ebook.tickets_reward}</div>
+                        ${buyBtn}
+                    </div>
                 </div>
-                <div class="ebook-info">
-                    <div class="ebook-name">${ebook.name}</div>
-                    <div class="ebook-price">$${ebook.price}</div>
-                    <div class="ebook-tickets">🎫 ${ebook.tickets_reward}</div>
-                    ${!currentUser?.ebooks_owned.includes(ebook.id) ? 
-                        `<button class="btn-buy" onclick="buyEbook(${ebook.id})">Buy</button>` : 
-                        `<button class="btn-buy" disabled>Owned ✓</button>`
-                    }
-                </div>
-            </div>
-        `).join('');
-        
-        showLoading(false);
-    } catch (error) {
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Failed to load ebooks', err);
+        if (err.name === 'AbortError') {
+            ebooksList.innerHTML = '<div class="loading">Loading timed out. Spróbuj ponownie.</div>';
+        } else {
+            ebooksList.innerHTML = '<div class="loading">Failed to load ebooks</div>';
+        }
         showToast('Failed to load ebooks', 'error');
-        showLoading(false);
+    } finally {
+        clearTimeout(timeout);
     }
 }
 
@@ -348,6 +383,27 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+// ==================== ADMIN ACTIONS ====================
+async function endGiveaway(giveawayId) {
+    if (!giveawayId || isNaN(giveawayId)) {
+        showToast('Provide a valid giveaway ID', 'error');
+        return;
+    }
+
+    try {
+        showLoading(true);
+        const res = await apiCall(`/giveaway/end/${giveawayId}`, 'POST', { admin_telegram_id: telegramUserId });
+        showToast('Giveaway ended', 'success');
+        const el = document.getElementById('admin-result');
+        if (el) el.textContent = JSON.stringify(res.result || res, null, 2);
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to end giveaway: ' + (err.message || err), 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Telegram
@@ -357,7 +413,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupNavigation();
     
     // Setup copy button
-    document.getElementById('copy-referral-btn').addEventListener('click', copyReferralLink);
+    const copyBtn = document.getElementById('copy-referral-btn');
+    if (copyBtn) copyBtn.addEventListener('click', copyReferralLink);
     
     // Load initial data
     showLoading(true);
