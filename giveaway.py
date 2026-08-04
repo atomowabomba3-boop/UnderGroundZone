@@ -157,7 +157,7 @@ class GiveawayManager:
     
     @staticmethod
     def add_ebook_to_owner(user_id, ebook_id):
-        """Add ebook to user's owned ebooks"""
+        """Add ebook to user's owned ebooks (robust handling of stored format)"""
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -168,7 +168,18 @@ class GiveawayManager:
             conn.close()
             return False
         
-        ebooks_owned = json.loads(user['ebooks_owned'])
+        # ebooks_owned in DB may be stored as a JSON string or already as a Python list
+        ebooks_field = user['ebooks_owned']
+        try:
+            if isinstance(ebooks_field, str):
+                ebooks_owned = json.loads(ebooks_field)
+            elif isinstance(ebooks_field, (list, tuple)):
+                ebooks_owned = list(ebooks_field)
+            else:
+                # fallback
+                ebooks_owned = []
+        except Exception:
+            ebooks_owned = []
         
         if ebook_id not in ebooks_owned:
             ebooks_owned.append(ebook_id)
