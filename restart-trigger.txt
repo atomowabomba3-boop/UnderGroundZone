@@ -1,0 +1,2 @@
+Redeploy trigger file - touch to trigger Railway rebuild
+Timestamp: 2026-08-04T18:44:00Z
