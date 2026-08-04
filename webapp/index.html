@@ -36,6 +36,10 @@
             <button class="nav-tab" data-tab="ranking">
                 <span class="icon">🏆</span> Ranking
             </button>
+            <!-- Admin tab hidden by default; will be shown only for the admin telegram id -->
+            <button id="nav-admin-tab" class="nav-tab" data-tab="admin" style="display:none">
+                <span class="icon">🔧</span> Admin
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -156,6 +160,19 @@
                 <h2>🏆 Top Users</h2>
                 <div id="ranking-list" class="ranking-grid">
                     <div class="loading">Loading ranking...</div>
+                </div>
+            </section>
+
+            <!-- Admin Tab (visible only for admin user) -->
+            <section id="admin-tab" class="tab-content">
+                <h2>🔧 Admin</h2>
+                <div class="admin-section">
+                    <div class="admin-row">
+                        <label for="admin-giveaway-id">Giveaway ID to end:</label>
+                        <input type="number" id="admin-giveaway-id" class="referral-input" placeholder="Giveaway ID">
+                        <button class="btn btn-primary" onclick="endGiveaway(parseInt(document.getElementById('admin-giveaway-id').value))">End Giveaway</button>
+                    </div>
+                    <div id="admin-result" style="margin-top:12px;color:#fff;background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;"></div>
                 </div>
             </section>
         </main>
