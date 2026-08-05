@@ -6,7 +6,7 @@ import requests
 
 from database import (
     init_db, create_user, get_user, get_user_by_id, update_user_tickets,
-    add_referral, get_ranking, get_all_ebooks, purchase_ebook
+    add_referral, get_ranking, get_all_ebooks, purchase_ebook, create_giveaway
 )
 from giveaway import GiveawayManager
 from utils import (
@@ -337,6 +337,33 @@ def giveaway_status():
         'giveaway': giveaway
     }), 200
 
+@app.route('/giveaway/join', methods=['POST'])
+@require_telegram_id
+def giveaway_join(telegram_id):
+    """Join current giveaway (user)"""
+    data = request.json or {}
+    tickets = data.get('tickets')
+    try:
+        tickets = int(tickets)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid tickets value'}), 400
+
+    if tickets < 1:
+        return jsonify({'error': 'Tickets must be >= 1'}), 400
+
+    user = get_user(telegram_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    success, message = GiveawayManager.user_join_giveaway(user['id'], tickets)
+    if success:
+        updated_user = get_user(telegram_id)
+        user_resp = format_user_response(updated_user)
+        user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
+        return jsonify({'status': 'success', 'message': message, 'user': user_resp}), 200
+    else:
+        return jsonify({'error': message}), 400
+
 @app.route('/giveaway/start', methods=['POST'])
 def giveaway_start():
     """Admin endpoint to start a giveaway manually if none active"""
@@ -350,3 +377,86 @@ def giveaway_start():
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid admin id'}), 403
 
+    # verify admin against environment variable ADMIN_TELEGRAM_IDS or ADMIN_TELEGRAM_ID
+    admin_env = os.getenv('ADMIN_TELEGRAM_IDS') or os.getenv('ADMIN_TELEGRAM_ID')
+    is_admin = False
+    if admin_env:
+        allowed = [a.strip() for a in admin_env.split(',') if a.strip()]
+        if str(admin_id) in allowed:
+            is_admin = True
+
+    if not is_admin:
+        return jsonify({'error': 'Forbidden: not an admin'}), 403
+
+    force = bool(data.get('force', False))
+
+    current = GiveawayManager.get_current_giveaway()
+    if current and not force:
+        return jsonify({'error': 'There is already an active giveaway', 'giveaway': current}), 400
+
+    if force:
+        try:
+            new_id = create_giveaway()
+            new_giveaway = GiveawayManager.get_current_giveaway()
+            return jsonify({'status': 'success', 'message': 'Giveaway created (forced)', 'giveaway': new_giveaway}), 200
+        except Exception as e:
+            return jsonify({'error': 'Failed to create giveaway', 'detail': str(e)}), 500
+    else:
+        started = GiveawayManager.check_and_start_giveaway()
+        if started:
+            new_giveaway = GiveawayManager.get_current_giveaway()
+            return jsonify({'status': 'success', 'message': 'Giveaway started', 'giveaway': new_giveaway}), 200
+        else:
+            return jsonify({'status': 'no_action', 'message': 'Pool threshold not reached or already active'}), 200
+
+
+@app.route('/giveaway/end', methods=['POST'])
+@app.route('/giveaway/end/<int:giveaway_id>', methods=['POST'])
+def giveaway_end(giveaway_id=None):
+    """Admin endpoint to end a giveaway (draw winner and finalize)"""
+    data = request.json or {}
+    admin_id = data.get('admin_telegram_id') or request.headers.get('X-Admin-Telegram')
+
+    if admin_id is None:
+        return jsonify({'error': 'Missing admin id'}), 403
+    try:
+        admin_id = int(admin_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid admin id'}), 403
+
+    # verify admin
+    admin_env = os.getenv('ADMIN_TELEGRAM_IDS') or os.getenv('ADMIN_TELEGRAM_ID')
+    allowed = [a.strip() for a in admin_env.split(',')] if admin_env else []
+    if str(admin_id) not in allowed:
+        return jsonify({'error': 'Forbidden: not an admin'}), 403
+
+    if giveaway_id is None:
+        current = GiveawayManager.get_current_giveaway()
+        if not current:
+            return jsonify({'error': 'No active giveaway to end'}), 400
+        giveaway_id = current['id']
+
+    try:
+        giveaway_id = int(giveaway_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid giveaway_id'}), 400
+
+    success, result = GiveawayManager.end_giveaway_round(giveaway_id)
+    if success:
+        return jsonify({'status': 'success', 'result': result}), 200
+    else:
+        return jsonify({'error': 'Failed to end giveaway', 'detail': result}), 500
+
+
+@app.route('/giveaway/history', methods=['GET'])
+def giveaway_history():
+    limit = request.args.get('limit', 10)
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    history = GiveawayManager.get_giveaway_history(limit=limit)
+    return jsonify({'status': 'success', 'history': history}), 200
+
+
+# End of file
