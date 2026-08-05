@@ -11,7 +11,8 @@ const API_ENDPOINTS = {
     GIVEAWAY_JOIN: '/giveaway/join',
     GIVEAWAY_START: '/giveaway/start',
     GIVEAWAY_END: '/giveaway/end',
-    GIVEAWAY_HISTORY: '/giveaway/history'
+    GIVEAWAY_HISTORY: '/giveaway/history',
+    GIVEAWAY_CREATE: '/giveaway/create'
 };
 
 // Admin ID
@@ -241,7 +242,7 @@ async function loadEBooks() {
             if (imgSrc) {
                 const fileHint = ebook.cover_image || ebook.file_path || '';
                 const fallback = fileHint ? `${GITHUB_RAW_BASE}/${fileHint}` : placeholder;
-                imgTag = `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="if(this.dataset.tried==='1'){this.onerror=null;this.src='${placeholder}'}else{this.dataset.tried='1';this.src='${fallback}';}" />`;
+                imgTag = `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="if(this.dataset.tried==='1'){this.onerror=null;this.src='${placeholder}'}else{this.dataset.tried='1';this.src='${fallback}'}">`;
             } else {
                 imgTag = `<div class="ebook-noimg">No Image</div>`;
             }
@@ -349,7 +350,7 @@ async function loadGiveawayStatus() {
                 <div class="giveaway-pool">
                     <div class="pool-label">No active giveaway</div>
                     <div class="pool-amount">$0.00</div>
-                    <div class="pool-label">Waiting for $15 pool</div>
+                    <div class="pool-label">Waiting for new giveaway</div>
                 </div>
                 <button class="btn btn-primary" onclick="location.reload()">Refresh</button>
             `;
@@ -476,25 +477,43 @@ function showToast(message, type = 'info') {
 }
 
 // ==================== ADMIN ACTIONS ====================
-async function startGiveaway() {
+async function createAndStartGiveaway() {
     try {
+        const hoursInput = document.getElementById('admin-giveaway-hours');
+        const amountInput = document.getElementById('admin-giveaway-amount');
+        
+        const hours = parseFloat(hoursInput.value);
+        const amount = parseFloat(amountInput.value);
+        
+        // Validation
+        if (isNaN(hours) || hours < 0.01 || hours > 1000) {
+            showToast('Hours must be between 0.01 and 1000', 'error');
+            return;
+        }
+        if (isNaN(amount) || amount < 0.01 || amount > 1000) {
+            showToast('Amount must be between 0.01 and 1000', 'error');
+            return;
+        }
+        
         showLoading(true);
-        // Force start so admin don't need pool to be reached when clicking Start
-        const res = await apiCall(API_ENDPOINTS.GIVEAWAY_START, 'POST', { admin_telegram_id: ADMIN_TELEGRAM_ID, force: true });
-        showToast(res.message || 'Giveaway started (forced)', 'success');
+        const res = await apiCall(API_ENDPOINTS.GIVEAWAY_CREATE, 'POST', { 
+            admin_telegram_id: ADMIN_TELEGRAM_ID, 
+            duration_hours: hours,
+            pool_amount: amount
+        });
+        showToast('Giveaway created and started successfully', 'success');
         const el = document.getElementById('admin-result');
         if (el) el.textContent = JSON.stringify(res, null, 2);
         await loadGiveawayStatus();
     } catch (err) {
         console.error(err);
-        showToast('Failed to start giveaway: ' + (err.message || err), 'error');
+        showToast('Failed to create giveaway: ' + (err.message || err), 'error');
     } finally {
         showLoading(false);
     }
 }
 
-async function endGiveaway(giveawayId) {
-    // We no longer require a giveawayId. Always end the current active giveaway.
+async function endGiveaway() {
     try {
         if (!confirm('Na pewno zakończyć aktualny giveaway?')) return;
         showLoading(true);
