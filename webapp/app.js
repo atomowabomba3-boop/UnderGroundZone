@@ -17,6 +17,9 @@ const API_ENDPOINTS = {
 // Admin ID
 const ADMIN_TELEGRAM_ID = 8998575936;
 
+// GitHub raw base for ebook images/files
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/atomowabomba3-boop/UnderGroundZone/main/ebooks';
+
 // ==================== TELEGRAM INTEGRATION ====================
 let telegramUserId = null;
 let currentUser = null;
@@ -197,24 +200,68 @@ async function loadEBooks() {
             return;
         }
 
-        const owned = (currentUser && Array.isArray(currentUser.ebooks_owned)) ? currentUser.ebooks_owned : [];
-        ebooksList.innerHTML = data.ebooks.map(ebook => {
-            const ownedClass = owned.includes(ebook.id) ? 'owned' : '';
-            const buyBtn = owned.includes(ebook.id)
+        // Group ebooks into tiers by price: 2 -> Tier 1, 5 -> Tier 2, 10 -> Tier 3
+        const tiers = { 'Tier 1': [], 'Tier 2': [], 'Tier 3': [], 'Other': [] };
+        data.ebooks.forEach(ebook => {
+            const price = Number(ebook.price);
+            if (price === 2) tiers['Tier 1'].push(ebook);
+            else if (price === 5) tiers['Tier 2'].push(ebook);
+            else if (price === 10) tiers['Tier 3'].push(ebook);
+            else tiers['Other'].push(ebook);
+        });
+
+        // simple HTML-escape helper to avoid accidental injection
+        function escapeHtml(s) {
+            if (!s) return '';
+            return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        // Render tiers
+        const renderEbookCard = (ebook) => {
+            // Determine image source: prefer cover_image if absolute URL, otherwise try GitHub raw
+            let imgSrc = '';
+            if (ebook.cover_image && /^https?:\/\//i.test(ebook.cover_image)) {
+                imgSrc = ebook.cover_image;
+            } else {
+                const fileHint = ebook.cover_image || ebook.file_path || '';
+                imgSrc = fileHint ? `${GITHUB_RAW_BASE}/${fileHint}` : '';
+            }
+
+            // fallback placeholder
+            const placeholder = 'https://via.placeholder.com/140x200.png?text=eBook';
+
+            const imgTag = imgSrc
+                ? `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="this.onerror=null;this.src='${placeholder}'" />`
+                : `<div class="ebook-noimg">No Image</div>`;
+
+            const owned = (currentUser && Array.isArray(currentUser.ebooks_owned) && currentUser.ebooks_owned.includes(ebook.id));
+            const buyBtn = owned
                 ? `<button class="btn-buy" disabled>Owned ✓</button>`
                 : `<button class="btn-buy" onclick="buyEbook(${ebook.id})">Buy</button>`;
+
             return `
                 <div class="ebook-card">
-                    <div class="ebook-cover ${ownedClass}">📕</div>
+                    <div class="ebook-cover">${imgTag}</div>
                     <div class="ebook-info">
-                        <div class="ebook-name">${ebook.name}</div>
-                        <div class="ebook-price">$${ebook.price}</div>
-                        <div class="ebook-tickets">🎫 ${ebook.tickets_reward}</div>
-                        ${buyBtn}
+                        <div class="ebook-name">${escapeHtml(ebook.name)}</div>
+                        <div class="ebook-meta">Price: $${ebook.price} • 🎫 ${ebook.tickets_reward} tickets</div>
+                        <div class="ebook-actions">${buyBtn}</div>
                     </div>
                 </div>
             `;
-        }).join('');
+        };
+
+        let html = '';
+        for (const tierName of ['Tier 1','Tier 2','Tier 3','Other']) {
+            const items = tiers[tierName];
+            if (!items || items.length === 0) continue;
+            html += `<h3 class="ebooks-tier-title">${tierName}</h3>`;
+            html += '<div class="ebooks-grid tier-grid">';
+            html += items.map(renderEbookCard).join('');
+            html += '</div>';
+        }
+
+        ebooksList.innerHTML = html;
 
     } catch (err) {
         console.error('Failed to load ebooks', err);
