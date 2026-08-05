@@ -195,10 +195,29 @@
                         <button class="btn btn-danger" style="width: 100%;" onclick="endGiveaway()">End Giveaway & Draw Winner</button>
                     </div>
 
+                    <div style="margin-top:12px;">
+                      <button class="btn" onclick="adminAddTickets()">Add 1 ticket to admin</button>
+                    </div>
+
                     <div id="admin-result" style="margin-top:12px;color:#fff;background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;"></div>
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Winner payout modal (minimal) -->
+    <div id="payout-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;">
+      <div style="background:#111;padding:16px;border-radius:8px;width:320px;color:#fff; margin:auto; max-width:90%">
+        <h3>🎉 Wygrałeś!</h3>
+        <p>Wybierz walutę i wklej adres portfela. Po potwierdzeniu nie można zmienić.</p>
+        <select id="payout-currency" style="width:100%;margin-bottom:8px;padding:6px;"></select>
+        <input id="payout-address" placeholder="Adres portfela" style="width:100%;padding:6px;margin-bottom:8px;" />
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="confirmPayout()">Potwierdź</button>
+          <button class="btn" onclick="closePayoutModal()">Anuluj</button>
+        </div>
+        <div id="payout-msg" style="margin-top:8px;color:#ffa"></div>
+      </div>
     </div>
 
     <!-- Loading Spinner -->
