@@ -1,5 +1,6 @@
 import random
 import json
+from datetime import datetime
 from database import (
     get_db_connection, get_giveaway_status, end_giveaway,
     join_giveaway, get_user_by_id
@@ -16,8 +17,45 @@ class GiveawayManager:
         return False
     
     @staticmethod
+    def calculate_remaining_time(ends_at_str):
+        """Calculate remaining time in seconds until giveaway ends"""
+        if not ends_at_str:
+            return None
+        
+        try:
+            # Parse ISO format datetime
+            if isinstance(ends_at_str, str):
+                ends_at = datetime.fromisoformat(ends_at_str.replace('Z', '+00:00'))
+            else:
+                ends_at = ends_at_str
+            
+            now = datetime.utcnow()
+            remaining = (ends_at - now).total_seconds()
+            
+            return max(0, remaining)  # Return 0 if time has expired
+        except Exception:
+            return None
+    
+    @staticmethod
+    def format_remaining_time(seconds):
+        """Format remaining seconds as human readable string"""
+        if seconds is None or seconds <= 0:
+            return "Ended"
+        
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        elif minutes > 0:
+            return f"{minutes}m {secs}s"
+        else:
+            return f"{secs}s"
+    
+    @staticmethod
     def get_current_giveaway():
-        """Get current active giveaway info"""
+        """Get current active giveaway info with remaining time"""
         giveaway = get_giveaway_status()
         
         if not giveaway:
@@ -35,12 +73,19 @@ class GiveawayManager:
         
         conn.close()
         
+        # Calculate remaining time
+        remaining_seconds = GiveawayManager.calculate_remaining_time(giveaway.get('ends_at'))
+        remaining_formatted = GiveawayManager.format_remaining_time(remaining_seconds)
+        
         return {
             'id': giveaway['id'],
             'pool_amount': giveaway['pool_amount'],
             'status': giveaway['status'],
             'participants': participant_count,
-            'created_at': giveaway['created_at']
+            'created_at': giveaway['created_at'],
+            'ends_at': giveaway.get('ends_at'),
+            'remaining_seconds': remaining_seconds,
+            'remaining_time': remaining_formatted
         }
     
     @staticmethod
