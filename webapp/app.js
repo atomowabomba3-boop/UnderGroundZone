@@ -242,7 +242,7 @@ async function loadEBooks() {
             if (imgSrc) {
                 const fileHint = ebook.cover_image || ebook.file_path || '';
                 const fallback = fileHint ? `${GITHUB_RAW_BASE}/${fileHint}` : placeholder;
-                imgTag = `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="if(this.dataset.tried==='1'){this.onerror=null;this.src='${placeholder}'}else{this.dataset.tried='1';this.src='${fallback}'}"/>`;
+                imgTag = `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="if(this.dataset.tried==='1'){this.onerror=null;this.src='${placeholder}'}else{this.dataset.tried='1';this.src='${fallback}'}" />`;
             } else {
                 imgTag = `<div class="ebook-noimg">No Image</div>`;
             }
@@ -340,6 +340,29 @@ async function loadRanking() {
     }
 }
 
+// Format remaining time for display
+function formatRemainingTime(endsAtStr) {
+    try {
+        const now = new Date();
+        const endTime = new Date(endsAtStr);
+        const diff = endTime - now;
+        
+        if (diff <= 0) return 'Ended';
+        
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        if (days > 0) return `${days}d ${hours}h left`;
+        if (hours > 0) return `${hours}h ${minutes}m left`;
+        if (minutes > 0) return `${minutes}m ${seconds}s left`;
+        return `${seconds}s left`;
+    } catch (e) {
+        return 'N/A';
+    }
+}
+
 async function loadGiveawayStatus() {
     try {
         const data = await apiCall(API_ENDPOINTS.GIVEAWAY_STATUS);
@@ -358,27 +381,7 @@ async function loadGiveawayStatus() {
         }
         
         const giveaway = data.giveaway;
-        let timerHTML = '';
-        
-        if (giveaway.ends_at) {
-            const now = new Date();
-            const endTime = new Date(giveaway.ends_at);
-            const diff = endTime - now;
-            
-            if (diff > 0) {
-                const hours = Math.floor(diff / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                
-                timerHTML = `
-                    <div class="giveaway-timer">
-                        ⏰ Time remaining: <strong>${hours}h ${minutes}m ${seconds}s</strong>
-                    </div>
-                `;
-            } else {
-                timerHTML = `<div class="giveaway-timer expired">⏰ Giveaway ended</div>`;
-            }
-        }
+        const remainingTime = formatRemainingTime(giveaway.ends_at);
         
         giveawayContent.innerHTML = `
             <div class="giveaway-pool">
@@ -386,10 +389,13 @@ async function loadGiveawayStatus() {
                 <div class="pool-amount">$${giveaway.pool_amount.toFixed(2)}</div>
             </div>
             
-            ${timerHTML}
-            
             <div class="giveaway-status">
                 🎁 Active Giveaway - ${giveaway.participants} participants
+            </div>
+            
+            <div class="giveaway-timer">
+                <div class="timer-label">Time Remaining</div>
+                <div class="timer-value">${remainingTime}</div>
             </div>
             
             <div class="giveaway-stats">
@@ -406,6 +412,21 @@ async function loadGiveawayStatus() {
             <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" 
                     onclick="joinGiveaway(${giveaway.id})">Join Giveaway (Spend All Tickets)</button>
         `;
+        
+        // Update timer every second
+        const updateTimer = setInterval(() => {
+            const newRemaining = formatRemainingTime(giveaway.ends_at);
+            const timerValue = document.querySelector('.timer-value');
+            if (timerValue) {
+                timerValue.textContent = newRemaining;
+                if (newRemaining === 'Ended') {
+                    clearInterval(updateTimer);
+                    loadGiveawayStatus();
+                }
+            } else {
+                clearInterval(updateTimer);
+            }
+        }, 1000);
     } catch (error) {
         console.error('Failed to load giveaway status:', error);
     }
@@ -505,9 +526,11 @@ async function createAndStartGiveaway() {
     try {
         const hoursInput = document.getElementById('admin-giveaway-hours');
         const amountInput = document.getElementById('admin-giveaway-amount');
+        const winnersInput = document.getElementById('admin-giveaway-winners');
         
         const hours = parseFloat(hoursInput.value);
         const amount = parseFloat(amountInput.value);
+        const numWinners = parseInt(winnersInput.value);
         
         // Validation
         if (isNaN(hours) || hours < 0.01 || hours > 1000) {
@@ -518,12 +541,17 @@ async function createAndStartGiveaway() {
             showToast('Amount must be between 0.01 and 1000', 'error');
             return;
         }
+        if (isNaN(numWinners) || numWinners < 1 || numWinners > 100) {
+            showToast('Number of winners must be between 1 and 100', 'error');
+            return;
+        }
         
         showLoading(true);
         const res = await apiCall(API_ENDPOINTS.GIVEAWAY_CREATE, 'POST', { 
             admin_telegram_id: ADMIN_TELEGRAM_ID, 
             duration_hours: hours,
-            pool_amount: amount
+            pool_amount: amount,
+            num_winners: numWinners
         });
         showToast('Giveaway created and started successfully', 'success');
         const el = document.getElementById('admin-result');
@@ -571,11 +599,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await startUser();
     await loadRanking();
     showLoading(false);
-    
-    // Refresh giveaway status every 1 second
-    setInterval(() => {
-        loadGiveawayStatus();
-    }, 1000);
     
     // Refresh user data every 30 seconds
     setInterval(() => {
