@@ -399,14 +399,17 @@ def giveaway_create():
     try:
         duration_hours = float(data.get('duration_hours', 24.0))
         pool_amount = float(data.get('pool_amount', 15.0))
+        num_winners = int(data.get('num_winners', 1))
     except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid duration_hours or pool_amount'}), 400
+        return jsonify({'error': 'Invalid duration_hours, pool_amount, or num_winners'}), 400
 
     # Validate ranges
     if duration_hours < 0.01 or duration_hours > 1000:
         return jsonify({'error': 'Duration must be between 0.01 and 1000 hours'}), 400
     if pool_amount < 0.01 or pool_amount > 1000:
         return jsonify({'error': 'Pool amount must be between 0.01 and 1000'}), 400
+    if num_winners < 1 or num_winners > 100:
+        return jsonify({'error': 'Number of winners must be between 1 and 100'}), 400
 
     try:
         # Check if there's already an active giveaway
@@ -415,11 +418,11 @@ def giveaway_create():
             return jsonify({'error': 'There is already an active giveaway', 'giveaway': current}), 400
 
         # Create giveaway
-        new_id = create_giveaway(pool_amount=pool_amount, duration_hours=duration_hours)
+        new_id = create_giveaway(pool_amount=pool_amount, duration_hours=duration_hours, num_winners=num_winners)
         new_giveaway = GiveawayManager.get_current_giveaway()
         return jsonify({
             'status': 'success',
-            'message': f'Giveaway created (${pool_amount} for {duration_hours}h)',
+            'message': f'Giveaway created (${pool_amount} for {duration_hours}h, {num_winners} winner{"s" if num_winners > 1 else ""})',
             'giveaway': new_giveaway
         }), 200
     except Exception as e:
