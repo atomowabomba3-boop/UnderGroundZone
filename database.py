@@ -83,6 +83,7 @@ def init_db():
             pool_amount REAL DEFAULT 0.0,
             status TEXT DEFAULT 'inactive',
             duration_hours REAL,
+            num_winners INTEGER DEFAULT 1,
             winner_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             ends_at TIMESTAMP,
@@ -330,8 +331,8 @@ def get_giveaway_status():
     conn.close()
     return dict(giveaway) if giveaway else None
 
-def create_giveaway(pool_amount=15.0, duration_hours=24.0):
-    """Create new giveaway with specified pool amount and duration"""
+def create_giveaway(pool_amount=15.0, duration_hours=24.0, num_winners=1):
+    """Create new giveaway with specified pool amount, duration, and number of winners"""
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -340,8 +341,8 @@ def create_giveaway(pool_amount=15.0, duration_hours=24.0):
         ends_at = now + timedelta(hours=duration_hours)
         
         cursor.execute(
-            'INSERT INTO giveaway (status, pool_amount, duration_hours, ends_at) VALUES (?, ?, ?, ?)',
-            ('active', pool_amount, duration_hours, ends_at.isoformat())
+            'INSERT INTO giveaway (status, pool_amount, duration_hours, num_winners, ends_at) VALUES (?, ?, ?, ?, ?)',
+            ('active', pool_amount, duration_hours, num_winners, ends_at.isoformat())
         )
         conn.commit()
         giveaway_id = cursor.lastrowid
