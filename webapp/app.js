@@ -319,10 +319,8 @@ async function loadGiveawayStatus() {
                 </div>
             </div>
             
-            <input type="number" id="tickets-input" min="1" max="${currentUser?.tickets || 0}" 
-                   value="1" class="referral-input" placeholder="Tickets to spend">
             <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" 
-                    onclick="joinGiveaway(${giveaway.id})">Join Giveaway</button>
+                    onclick="joinGiveaway(${giveaway.id})">Join Giveaway (Spend All Tickets)</button>
         `;
     } catch (error) {
         console.error('Failed to load giveaway status:', error);
@@ -331,21 +329,24 @@ async function loadGiveawayStatus() {
 
 async function joinGiveaway(giveawayId) {
     try {
-        const ticketsInput = document.getElementById('tickets-input');
-        const tickets = parseInt(ticketsInput?.value || 1);
-        
-        if (tickets > currentUser.tickets) {
-            showToast('Not enough tickets', 'error');
+        // New behavior: always join spending ALL available tickets. Do not read a manual input.
+        if (!currentUser) {
+            showToast('User not loaded', 'error');
             return;
         }
-        
+
+        if ((currentUser.tickets || 0) <= 0) {
+            showToast('No tickets available', 'error');
+            return;
+        }
+
         showLoading(true);
+        // Omitting 'tickets' field -> backend treats as auto (spend all)
         await apiCall(API_ENDPOINTS.GIVEAWAY_JOIN, 'POST', {
-            telegram_id: telegramUserId,
-            tickets: tickets
+            telegram_id: telegramUserId
         });
         
-        showToast(`Successfully joined with ${tickets} tickets!`, 'success');
+        showToast(`Successfully joined giveaway (all tickets spent)`, 'success');
         await getUser();
         await loadGiveawayStatus();
         showLoading(false);
