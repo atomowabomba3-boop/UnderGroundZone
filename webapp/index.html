@@ -167,16 +167,25 @@
             <section id="admin-tab" class="tab-content">
                 <h2>🔧 Admin</h2>
                 <div class="admin-section">
-                    <div class="admin-row">
-                        <label for="admin-giveaway-id">Giveaway ID to end:</label>
-                        <input type="number" id="admin-giveaway-id" class="referral-input" placeholder="Giveaway ID">
-                        <button class="btn btn-primary" onclick="endGiveaway(parseInt(document.getElementById('admin-giveaway-id').value))">End Giveaway</button>
+                    <div class="admin-panel">
+                        <h3>Create Giveaway</h3>
+                        <div class="admin-row">
+                            <label for="admin-giveaway-hours">Duration (hours):</label>
+                            <input type="number" id="admin-giveaway-hours" class="referral-input" placeholder="0.01 - 1000" min="0.01" max="1000" step="0.01" value="24">
+                        </div>
+                        
+                        <div class="admin-row">
+                            <label for="admin-giveaway-amount">Prize Pool ($):</label>
+                            <input type="number" id="admin-giveaway-amount" class="referral-input" placeholder="0.01 - 1000" min="0.01" max="1000" step="0.01" value="15">
+                        </div>
+                        
+                        <button class="btn btn-success" style="width: 100%; margin-top: 12px;" onclick="createAndStartGiveaway()">Create & Start Giveaway</button>
+                        <span id="admin-giveaway-status" style="margin-left:12px;color:#fff;"></span>
                     </div>
 
-                    <div class="admin-row" style="margin-top:12px;">
-                        <label>Admin Actions:</label>
-                        <button class="btn btn-success" onclick="startGiveaway()">Start Giveaway</button>
-                        <span id="admin-giveaway-status" style="margin-left:12px;color:#fff;"></span>
+                    <div class="admin-panel" style="margin-top: 20px;">
+                        <h3>End Active Giveaway</h3>
+                        <button class="btn btn-danger" style="width: 100%;" onclick="endGiveaway()">End Giveaway & Draw Winner</button>
                     </div>
 
                     <div id="admin-result" style="margin-top:12px;color:#fff;background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;"></div>
