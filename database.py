@@ -85,6 +85,7 @@ def init_db():
             duration_hours REAL,
             winner_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ends_at TIMESTAMP,
             ended_at TIMESTAMP,
             FOREIGN KEY (winner_id) REFERENCES users(id)
         )
@@ -334,9 +335,13 @@ def create_giveaway(pool_amount=15.0, duration_hours=24.0):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
+        # Calculate end time
+        now = datetime.utcnow()
+        ends_at = now + timedelta(hours=duration_hours)
+        
         cursor.execute(
-            'INSERT INTO giveaway (status, pool_amount, duration_hours) VALUES (?, ?, ?)',
-            ('active', pool_amount, duration_hours)
+            'INSERT INTO giveaway (status, pool_amount, duration_hours, ends_at) VALUES (?, ?, ?, ?)',
+            ('active', pool_amount, duration_hours, ends_at.isoformat())
         )
         conn.commit()
         giveaway_id = cursor.lastrowid
