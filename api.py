@@ -378,6 +378,53 @@ def giveaway_join(telegram_id):
     else:
         return jsonify({'error': message}), 400
 
+@app.route('/giveaway/create', methods=['POST'])
+def giveaway_create():
+    """Admin endpoint to create and start a giveaway with specified parameters"""
+    data = request.json or {}
+    admin_id = data.get('admin_telegram_id') or request.headers.get('X-Admin-Telegram')
+
+    if admin_id is None:
+        return jsonify({'error': 'Missing admin id'}), 403
+    try:
+        admin_id = int(admin_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid admin id'}), 403
+
+    # Verify admin
+    if admin_id != ADMIN_TELEGRAM_ID:
+        return jsonify({'error': 'Forbidden: not an admin'}), 403
+
+    # Get parameters
+    try:
+        duration_hours = float(data.get('duration_hours', 24.0))
+        pool_amount = float(data.get('pool_amount', 15.0))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid duration_hours or pool_amount'}), 400
+
+    # Validate ranges
+    if duration_hours < 0.01 or duration_hours > 1000:
+        return jsonify({'error': 'Duration must be between 0.01 and 1000 hours'}), 400
+    if pool_amount < 0.01 or pool_amount > 1000:
+        return jsonify({'error': 'Pool amount must be between 0.01 and 1000'}), 400
+
+    try:
+        # Check if there's already an active giveaway
+        current = GiveawayManager.get_current_giveaway()
+        if current:
+            return jsonify({'error': 'There is already an active giveaway', 'giveaway': current}), 400
+
+        # Create giveaway
+        new_id = create_giveaway(pool_amount=pool_amount, duration_hours=duration_hours)
+        new_giveaway = GiveawayManager.get_current_giveaway()
+        return jsonify({
+            'status': 'success',
+            'message': f'Giveaway created (${pool_amount} for {duration_hours}h)',
+            'giveaway': new_giveaway
+        }), 200
+    except Exception as e:
+        return jsonify({'error': 'Failed to create giveaway', 'detail': str(e)}), 500
+
 @app.route('/giveaway/start', methods=['POST'])
 def giveaway_start():
     """Admin endpoint to start a giveaway manually if none active"""
