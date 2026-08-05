@@ -29,7 +29,12 @@ class GiveawayManager:
             else:
                 ends_at = ends_at_str
             
-            now = datetime.utcnow()
+            # Use a 'now' compatible with ends_at: if ends_at has tzinfo use same tz, else use naive UTC
+            if getattr(ends_at, 'tzinfo', None):
+                now = datetime.now(tz=ends_at.tzinfo)
+            else:
+                now = datetime.utcnow()
+            
             remaining = (ends_at - now).total_seconds()
             
             return max(0, remaining)  # Return 0 if time has expired
@@ -161,7 +166,16 @@ class GiveawayManager:
         winner_id = GiveawayManager.draw_winner(giveaway_id)
         
         if not winner_id:
-            return False, "No participants to draw winner"
+            # No participants — still finalize giveaway (no winner)
+            success = end_giveaway(giveaway_id, None)
+            if success:
+                return True, {
+                    'winner_id': None,
+                    'winner_telegram_id': None,
+                    'message': 'Giveaway ended with no participants'
+                }
+            else:
+                return False, "Failed to end giveaway"
         
         # End giveaway (resets all participants' tickets to 1)
         success = end_giveaway(giveaway_id, winner_id)
