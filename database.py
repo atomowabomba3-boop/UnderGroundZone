@@ -64,13 +64,14 @@ def init_db():
         count_row = cursor.fetchone()
         count = count_row['c'] if count_row else 0
         if count == 0:
-            # Using placeholder cover_image URLs; file_path references raw files in repo/ebooks (if available) or names
+            # Using cover_image file names that exist in webapp/images so the eBooks tab will load local images
+            # file_path still points to the ebook files (pdf) if available in the /ebooks folder or on GitHub raw
             cursor.execute('INSERT INTO ebooks (name, price, tickets_reward, file_path, cover_image) VALUES (?, ?, ?, ?, ?)',
-                           ('Learn JS', 2.0, 50, 'learn_js.pdf', 'https://via.placeholder.com/300x420.png?text=Learn+JS'))
+                           ('Learn JS', 2.0, 50, 'learn_js.pdf', 'ebook_blue.png.jpg'))
             cursor.execute('INSERT INTO ebooks (name, price, tickets_reward, file_path, cover_image) VALUES (?, ?, ?, ?, ?)',
-                           ('Python Basics', 5.0, 150, 'python_basics.pdf', 'https://via.placeholder.com/300x420.png?text=Python+Basics'))
+                           ('Python Basics', 5.0, 150, 'python_basics.pdf', 'ebook_green.png.jpg'))
             cursor.execute('INSERT INTO ebooks (name, price, tickets_reward, file_path, cover_image) VALUES (?, ?, ?, ?, ?)',
-                           ('Advanced Security', 10.0, 500, 'advanced_security.pdf', 'https://via.placeholder.com/300x420.png?text=Advanced+Security'))
+                           ('Advanced Security', 10.0, 500, 'advanced_security.pdf', 'ebook_purple.png.jpg'))
     except Exception:
         # If seeding fails, continue without crashing
         pass
