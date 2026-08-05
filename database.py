@@ -332,12 +332,26 @@ def create_giveaway():
     conn.close()
     return giveaway_id
 
+
 def join_giveaway(giveaway_id, user_id, tickets_spent):
-    """User joins giveaway"""
+    """User joins giveaway
+
+    Returns (success: bool, message: str)
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
+        # Check if user already joined this giveaway
+        cursor.execute(
+            'SELECT 1 FROM giveaway_participants WHERE giveaway_id = ? AND user_id = ?',
+            (giveaway_id, user_id)
+        )
+        if cursor.fetchone():
+            conn.close()
+            return False, 'You are already in the giveaway'
+
+        # Insert participation record
         cursor.execute(
             'INSERT INTO giveaway_participants (giveaway_id, user_id, tickets_spent) VALUES (?, ?, ?)',
             (giveaway_id, user_id, tickets_spent)
@@ -350,11 +364,13 @@ def join_giveaway(giveaway_id, user_id, tickets_spent):
         )
         
         conn.commit()
-        return True
+        return True, 'Successfully joined giveaway'
     except Exception:
-        return False
+        conn.rollback()
+        return False, 'Failed to join giveaway'
     finally:
         conn.close()
+
 
 def end_giveaway(giveaway_id, winner_id):
     """End giveaway and reset users"""
