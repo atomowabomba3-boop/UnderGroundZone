@@ -242,7 +242,7 @@ async function loadEBooks() {
             if (imgSrc) {
                 const fileHint = ebook.cover_image || ebook.file_path || '';
                 const fallback = fileHint ? `${GITHUB_RAW_BASE}/${fileHint}` : placeholder;
-                imgTag = `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="if(this.dataset.tried==='1'){this.onerror=null;this.src='${placeholder}'}else{this.dataset.tried='1';this.src='${fallback}'}">`;
+                imgTag = `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="if(this.dataset.tried==='1'){this.onerror=null;this.src='${placeholder}'}else{this.dataset.tried='1';this.src='${fallback}'}"/>`;
             } else {
                 imgTag = `<div class="ebook-noimg">No Image</div>`;
             }
@@ -358,11 +358,35 @@ async function loadGiveawayStatus() {
         }
         
         const giveaway = data.giveaway;
+        let timerHTML = '';
+        
+        if (giveaway.ends_at) {
+            const now = new Date();
+            const endTime = new Date(giveaway.ends_at);
+            const diff = endTime - now;
+            
+            if (diff > 0) {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                timerHTML = `
+                    <div class="giveaway-timer">
+                        ⏰ Time remaining: <strong>${hours}h ${minutes}m ${seconds}s</strong>
+                    </div>
+                `;
+            } else {
+                timerHTML = `<div class="giveaway-timer expired">⏰ Giveaway ended</div>`;
+            }
+        }
+        
         giveawayContent.innerHTML = `
             <div class="giveaway-pool">
                 <div class="pool-label">Prize Pool</div>
                 <div class="pool-amount">$${giveaway.pool_amount.toFixed(2)}</div>
             </div>
+            
+            ${timerHTML}
             
             <div class="giveaway-status">
                 🎁 Active Giveaway - ${giveaway.participants} participants
@@ -547,6 +571,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await startUser();
     await loadRanking();
     showLoading(false);
+    
+    // Refresh giveaway status every 1 second
+    setInterval(() => {
+        loadGiveawayStatus();
+    }, 1000);
     
     // Refresh user data every 30 seconds
     setInterval(() => {
