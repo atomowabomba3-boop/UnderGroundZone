@@ -68,6 +68,19 @@ def init_db():
         )
     ''')
 
+    # payout requests for winners
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS giveaway_payouts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            giveaway_id INTEGER,
+            user_id INTEGER,
+            currency TEXT,
+            address TEXT,
+            confirmed_at TEXT,
+            UNIQUE(giveaway_id, user_id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -82,6 +95,7 @@ def create_user(telegram_id):
         uid = cur.lastrowid
         cur.execute('SELECT * FROM users WHERE id = ?', (uid,))
         row = cur.fetchone()
+        conn.close()
         return row
     except Exception:
         conn.rollback()
@@ -237,13 +251,77 @@ def draw_winner(giveaway_id):
     import random
     return random.choices(users, weights=weights, k=1)[0]
 
+def create_payout_entry(giveaway_id, user_id):
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        cur.execute('SELECT * FROM giveaway_payouts WHERE giveaway_id = ? AND user_id = ?', (int(giveaway_id), int(user_id)))
+        if not cur.fetchone():
+            cur.execute('INSERT INTO giveaway_payouts (giveaway_id, user_id, currency, address, confirmed_at) VALUES (?, ?, ?, ?, ?)',
+                        (int(giveaway_id), int(user_id), None, None, None))
+            conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def get_payout(giveaway_id, user_id):
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM giveaway_payouts WHERE giveaway_id = ? AND user_id = ?', (int(giveaway_id), int(user_id)))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+def confirm_payout(giveaway_id, user_id, currency, address):
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        cur.execute('SELECT confirmed_at FROM giveaway_payouts WHERE giveaway_id = ? AND user_id = ?', (int(giveaway_id), int(user_id)))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return False, 'No payout entry found'
+        if row.get('confirmed_at'):
+            conn.close()
+            return False, 'Payout already confirmed'
+        confirmed_at = datetime.utcnow().replace(microsecond=0).isoformat() + 'Z'
+        cur.execute('UPDATE giveaway_payouts SET currency = ?, address = ?, confirmed_at = ? WHERE giveaway_id = ? AND user_id = ?',
+                    (currency, address, confirmed_at, int(giveaway_id), int(user_id)))
+        conn.commit()
+        conn.close()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, str(e)
+
+def get_unconfirmed_payout_for_user(user_id):
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute('''SELECT gp.*, g.id as giveaway_id, g.pool_amount, g.ended_at
+                   FROM giveaway_payouts gp
+                   JOIN giveaway g ON gp.giveaway_id = g.id
+                   WHERE gp.user_id = ? AND gp.confirmed_at IS NULL AND g.status = 'ended'
+                   ORDER BY g.ended_at DESC LIMIT 1''', (int(user_id),))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
 def end_giveaway(giveaway_id, winner_id):
     conn = _connect()
     cur = conn.cursor()
     try:
         ended_at = datetime.utcnow().replace(microsecond=0).isoformat() + 'Z'
         cur.execute('UPDATE giveaway SET status = ?, winner_id = ?, ended_at = ? WHERE id = ?', ('ended', winner_id, ended_at, int(giveaway_id)))
-        # reset participants table entries handled as-is; keep them for history
+        # create payout entry for winner so frontend can prompt them
+        if winner_id:
+            cur.execute('SELECT * FROM giveaway_payouts WHERE giveaway_id = ? AND user_id = ?', (int(giveaway_id), int(winner_id)))
+            if not cur.fetchone():
+                cur.execute('INSERT INTO giveaway_payouts (giveaway_id, user_id, currency, address, confirmed_at) VALUES (?, ?, ?, ?, ?)',
+                            (int(giveaway_id), int(winner_id), None, None, None))
         conn.commit()
         return True
     except Exception:
