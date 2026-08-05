@@ -19,6 +19,8 @@ const ADMIN_TELEGRAM_ID = 8998575936;
 
 // GitHub raw base for ebook images/files
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/atomowabomba3-boop/UnderGroundZone/main/ebooks';
+// Additional images folder (webapp/images) — screenshot shows covers there
+const GITHUB_IMAGES_BASE = 'https://raw.githubusercontent.com/atomowabomba3-boop/UnderGroundZone/main/webapp/images';
 
 // ==================== TELEGRAM INTEGRATION ====================
 let telegramUserId = null;
@@ -218,21 +220,31 @@ async function loadEBooks() {
 
         // Render tiers
         const renderEbookCard = (ebook) => {
-            // Determine image source: prefer cover_image if absolute URL, otherwise try GitHub raw
+            // Determine image source: prefer absolute cover_image URL, otherwise try webapp/images then ebooks folder
             let imgSrc = '';
             if (ebook.cover_image && /^https?:\/\//i.test(ebook.cover_image)) {
                 imgSrc = ebook.cover_image;
             } else {
                 const fileHint = ebook.cover_image || ebook.file_path || '';
-                imgSrc = fileHint ? `${GITHUB_RAW_BASE}/${fileHint}` : '';
+                if (fileHint) {
+                    // try webapp/images first (per screenshot), then ebooks folder
+                    imgSrc = `${GITHUB_IMAGES_BASE}/${fileHint}`;
+                    // we'll set onerror to fallback to the ebooks path if images path 404s
+                }
             }
 
             // fallback placeholder
             const placeholder = 'https://via.placeholder.com/140x200.png?text=eBook';
 
-            const imgTag = imgSrc
-                ? `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="this.onerror=null;this.src='${placeholder}'" />`
-                : `<div class="ebook-noimg">No Image</div>`;
+            // If we have a fileHint but used images path, set data-alt-src with ebooks fallback so onerror can switch
+            let imgTag = '';
+            if (imgSrc) {
+                const fileHint = ebook.cover_image || ebook.file_path || '';
+                const fallback = fileHint ? `${GITHUB_RAW_BASE}/${fileHint}` : placeholder;
+                imgTag = `<img src="${imgSrc}" alt="${escapeHtml(ebook.name)}" class="ebook-cover-img" onerror="if(this.dataset.tried==='1'){this.onerror=null;this.src='${placeholder}'}else{this.dataset.tried='1';this.src='${fallback}';}" />`;
+            } else {
+                imgTag = `<div class="ebook-noimg">No Image</div>`;
+            }
 
             const owned = (currentUser && Array.isArray(currentUser.ebooks_owned) && currentUser.ebooks_owned.includes(ebook.id));
             const buyBtn = owned
