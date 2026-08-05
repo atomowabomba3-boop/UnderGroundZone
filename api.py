@@ -22,6 +22,9 @@ static_dir = os.path.join(base_dir, 'webapp')
 app = Flask(__name__, static_folder=static_dir, static_url_path='')
 CORS(app)
 
+# Fixed admin Telegram ID (single admin)
+ADMIN_TELEGRAM_ID = 8998575936
+
 # Helper to determine public frontend base used in referral links
 def get_frontend_base():
     # Prefer explicit environment variable (set this to your public webapp URL, e.g. https://your-app.example)
@@ -377,15 +380,8 @@ def giveaway_start():
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid admin id'}), 403
 
-    # verify admin against environment variable ADMIN_TELEGRAM_IDS or ADMIN_TELEGRAM_ID
-    admin_env = os.getenv('ADMIN_TELEGRAM_IDS') or os.getenv('ADMIN_TELEGRAM_ID')
-    is_admin = False
-    if admin_env:
-        allowed = [a.strip() for a in admin_env.split(',') if a.strip()]
-        if str(admin_id) in allowed:
-            is_admin = True
-
-    if not is_admin:
+    # verify admin against fixed ADMIN_TELEGRAM_ID
+    if admin_id != ADMIN_TELEGRAM_ID:
         return jsonify({'error': 'Forbidden: not an admin'}), 403
 
     force = bool(data.get('force', False))
@@ -411,8 +407,7 @@ def giveaway_start():
 
 
 @app.route('/giveaway/end', methods=['POST'])
-@app.route('/giveaway/end/<int:giveaway_id>', methods=['POST'])
-def giveaway_end(giveaway_id=None):
+def giveaway_end():
     """Admin endpoint to end a giveaway (draw winner and finalize)"""
     data = request.json or {}
     admin_id = data.get('admin_telegram_id') or request.headers.get('X-Admin-Telegram')
@@ -424,17 +419,15 @@ def giveaway_end(giveaway_id=None):
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid admin id'}), 403
 
-    # verify admin
-    admin_env = os.getenv('ADMIN_TELEGRAM_IDS') or os.getenv('ADMIN_TELEGRAM_ID')
-    allowed = [a.strip() for a in admin_env.split(',')] if admin_env else []
-    if str(admin_id) not in allowed:
+    # verify admin against fixed ADMIN_TELEGRAM_ID
+    if admin_id != ADMIN_TELEGRAM_ID:
         return jsonify({'error': 'Forbidden: not an admin'}), 403
 
-    if giveaway_id is None:
-        current = GiveawayManager.get_current_giveaway()
-        if not current:
-            return jsonify({'error': 'No active giveaway to end'}), 400
-        giveaway_id = current['id']
+    current = GiveawayManager.get_current_giveaway()
+    if not current:
+        return jsonify({'error': 'No active giveaway to end'}), 400
+
+    giveaway_id = current['id']
 
     try:
         giveaway_id = int(giveaway_id)
