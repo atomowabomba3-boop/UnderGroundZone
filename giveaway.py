@@ -2,7 +2,7 @@ import random
 import json
 from database import (
     get_db_connection, get_giveaway_status, end_giveaway,
-    join_giveaway, get_user_by_id
+    join_giveaway, join_giveaway_auto, get_user_by_id
 )
 
 class GiveawayManager:
@@ -72,25 +72,33 @@ class GiveawayManager:
     
     @staticmethod
     def user_join_giveaway(user_id, tickets_to_spend):
-        """User joins current giveaway"""
+        """User joins current giveaway. tickets_to_spend == None -> auto-spend all except 1"""
         # Get current active giveaway
         giveaway = get_giveaway_status()
         
         if not giveaway:
             return False, "No active giveaway"
         
-        # Validate user has enough tickets
+        # Validate user exists
         user = get_user_by_id(user_id)
-        if not user or user['tickets'] < tickets_to_spend:
+        if not user:
+            return False, "User not found"
+        
+        # Auto mode: spend all except 1
+        if tickets_to_spend is None:
+            result = join_giveaway_auto(giveaway['id'], user_id)
+            if isinstance(result, tuple):
+                return result
+            return (bool(result), "Successfully joined giveaway (auto-spend)" if result else "Failed to join giveaway")
+        
+        # Manual mode: spend specified tickets
+        if user['tickets'] < tickets_to_spend:
             return False, "Insufficient tickets"
         
-        # Add to giveaway
-        success = join_giveaway(giveaway['id'], user_id, tickets_to_spend)
-        
-        if success:
-            return True, "Successfully joined giveaway"
-        else:
-            return False, "Failed to join giveaway"
+        result = join_giveaway(giveaway['id'], user_id, tickets_to_spend)
+        if isinstance(result, tuple):
+            return result
+        return (bool(result), "Successfully joined giveaway" if result else "Failed to join giveaway")
     
     @staticmethod
     def draw_winner(giveaway_id):
@@ -100,8 +108,8 @@ class GiveawayManager:
         
         # Get all participants with their weights (tickets spent)
         cursor.execute(
-            '''SELECT user_id, tickets_spent FROM giveaway_participants 
-               WHERE giveaway_id = ? ORDER BY user_id''',
+            """SELECT user_id, tickets_spent FROM giveaway_participants 
+               WHERE giveaway_id = ? ORDER BY user_id""",
             (giveaway_id,)
         )
         participants = cursor.fetchall()
@@ -146,8 +154,8 @@ class GiveawayManager:
         cursor = conn.cursor()
         
         cursor.execute(
-            '''SELECT * FROM giveaway WHERE status = "ended" 
-               ORDER BY ended_at DESC LIMIT ?''',
+            """SELECT * FROM giveaway WHERE status = "ended" 
+               ORDER BY ended_at DESC LIMIT ?""",
             (limit,)
         )
         giveaways = [dict(row) for row in cursor.fetchall()]
