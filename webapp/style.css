@@ -471,6 +471,23 @@ body {
     color: var(--text-secondary);
 }
 
+.giveaway-timer {
+    padding: 12px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.giveaway-timer.expired {
+    background: rgba(255, 107, 157, 0.1);
+    border-left-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
 .giveaway-status {
     padding: 12px;
     background: rgba(0, 255, 136, 0.1);
