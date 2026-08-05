@@ -79,31 +79,37 @@ body {
 }
 
 /* ==================== NAVIGATION TABS ==================== */
+/* Make tabs a horizontally scrollable menu with larger, non-stretching items */
 .nav-tabs {
     display: flex;
-    gap: 0;
+    gap: 8px;
     background: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
     overflow-x: auto;
-    padding: 0;
+    padding: 6px 8px;
+    -webkit-overflow-scrolling: touch; /* smooth scrolling on mobile */
+    scroll-snap-type: x mandatory;
 }
 
 .nav-tab {
-    flex: 1;
-    min-width: 70px;
-    padding: 12px 8px;
+    flex: 0 0 auto; /* don't stretch — keep intrinsic width */
+    min-width: 92px; /* a bit larger so icons/text are easier to tap */
+    padding: 10px 14px;
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     transition: var(--transition);
     position: relative;
+    white-space: nowrap;
+    scroll-snap-align: start;
+    border-radius: 8px;
 }
 
 .nav-tab:hover {
@@ -112,22 +118,30 @@ body {
 
 .nav-tab.active {
     color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(0,212,255,0.03), rgba(255,107,157,0.03));
 }
 
 .nav-tab.active::after {
     content: '';
     position: absolute;
     bottom: -1px;
-    left: 0;
-    right: 0;
+    left: 12px;
+    right: 12px;
     height: 3px;
     background: var(--primary-color);
     box-shadow: 0 0 8px var(--primary-color);
+    border-radius: 2px 2px 0 0;
 }
 
 .nav-tab .icon {
-    font-size: 20px;
+    font-size: 22px; /* larger icons for easier tapping */
 }
+
+/* Allow horizontal menu to show partial next item as hint */
+.nav-tabs::-webkit-scrollbar {
+    height: 6px;
+}
+.nav-tabs::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
 
 /* ==================== CONTENT ==================== */
 .content {
@@ -272,8 +286,8 @@ body {
 /* ==================== EBOOKS TAB ==================== */
 .ebooks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* slightly larger cards */
+    gap: 16px;
 }
 
 .ebook-card {
@@ -283,6 +297,8 @@ body {
     overflow: hidden;
     transition: var(--transition);
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
 }
 
 .ebook-card:hover {
@@ -309,14 +325,14 @@ body {
 .ebook-cover-img {
     width: 100%;
     height: auto;
-    max-height: 420px; /* cap extreme heights to avoid very tall cards */
+    max-height: 520px; /* cap extreme heights to avoid very tall cards on mobile */
     object-fit: contain;
     display: block;
 }
 
 /* Placeholder/no-image box keeps a sensible minimum height */
 .ebook-noimg {
-    min-height: 180px;
+    min-height: 220px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -345,7 +361,7 @@ body {
 
 .ebook-name {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
@@ -749,15 +765,17 @@ body {
 
     .ebooks-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
     }
 
     .nav-tab {
-        min-width: 60px;
-        font-size: 11px;
+        min-width: 110px; /* make tappable items bigger on small screens */
+        font-size: 14px;
+        padding: 12px 16px;
     }
 
     .nav-tab .icon {
-        font-size: 18px;
+        font-size: 26px;
     }
 
     .title {
