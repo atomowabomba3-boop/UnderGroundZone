@@ -419,8 +419,9 @@ function showToast(message, type = 'info') {
 async function startGiveaway() {
     try {
         showLoading(true);
-        const res = await apiCall(API_ENDPOINTS.GIVEAWAY_START, 'POST', { admin_telegram_id: telegramUserId });
-        showToast(res.message || 'Giveaway start requested', 'success');
+        // Force start so admin don't need pool to be reached when clicking Start
+        const res = await apiCall(API_ENDPOINTS.GIVEAWAY_START, 'POST', { admin_telegram_id: ADMIN_TELEGRAM_ID, force: true });
+        showToast(res.message || 'Giveaway started (forced)', 'success');
         const el = document.getElementById('admin-result');
         if (el) el.textContent = JSON.stringify(res, null, 2);
         await loadGiveawayStatus();
@@ -433,14 +434,11 @@ async function startGiveaway() {
 }
 
 async function endGiveaway(giveawayId) {
-    if (!giveawayId || isNaN(giveawayId)) {
-        showToast('Provide a valid giveaway ID', 'error');
-        return;
-    }
-
+    // We no longer require a giveawayId. Always end the current active giveaway.
     try {
+        if (!confirm('Na pewno zakończyć aktualny giveaway?')) return;
         showLoading(true);
-        const res = await apiCall(`/giveaway/end/${giveawayId}`, 'POST', { admin_telegram_id: telegramUserId });
+        const res = await apiCall(API_ENDPOINTS.GIVEAWAY_END, 'POST', { admin_telegram_id: ADMIN_TELEGRAM_ID });
         showToast('Giveaway ended', 'success');
         const el = document.getElementById('admin-result');
         if (el) el.textContent = JSON.stringify(res.result || res, null, 2);
