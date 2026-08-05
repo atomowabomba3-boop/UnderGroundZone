@@ -343,22 +343,33 @@ def giveaway_status():
 @app.route('/giveaway/join', methods=['POST'])
 @require_telegram_id
 def giveaway_join(telegram_id):
-    """Join current giveaway (user)"""
+    """Join current giveaway (user)
+    Supports manual tickets or auto-join (spend all except 1) when `tickets` is omitted or null or set to 'auto'.
+    """
     data = request.json or {}
-    tickets = data.get('tickets')
-    try:
-        tickets = int(tickets)
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid tickets value'}), 400
 
-    if tickets < 1:
-        return jsonify({'error': 'Tickets must be >= 1'}), 400
+    # Determine if user requested auto-join
+    tickets_in_payload = 'tickets' in data
+    tickets_raw = data.get('tickets')
 
     user = get_user(telegram_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
-    success, message = GiveawayManager.user_join_giveaway(user['id'], tickets)
+    # If payload omitted tickets or explicit null/'auto' -> auto-join
+    if (not tickets_in_payload) or (tickets_raw is None) or (isinstance(tickets_raw, str) and tickets_raw.lower() == 'auto'):
+        success, message = GiveawayManager.user_join_giveaway(user['id'], None)
+    else:
+        try:
+            tickets = int(tickets_raw)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid tickets value'}), 400
+
+        if tickets < 1:
+            return jsonify({'error': 'Tickets must be >= 1'}), 400
+
+        success, message = GiveawayManager.user_join_giveaway(user['id'], tickets)
+
     if success:
         updated_user = get_user(telegram_id)
         user_resp = format_user_response(updated_user)
