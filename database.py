@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Use a writable default path inside the container (Railway) to avoid permission errors
 DB_PATH = os.getenv('DB_PATH', '/tmp/underground_zone.db')
@@ -82,6 +82,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             pool_amount REAL DEFAULT 0.0,
             status TEXT DEFAULT 'inactive',
+            duration_hours REAL,
             winner_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             ended_at TIMESTAMP,
@@ -328,18 +329,23 @@ def get_giveaway_status():
     conn.close()
     return dict(giveaway) if giveaway else None
 
-def create_giveaway():
-    """Create new giveaway (defaults to starting pool of $15.00)"""
+def create_giveaway(pool_amount=15.0, duration_hours=24.0):
+    """Create new giveaway with specified pool amount and duration"""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        'INSERT INTO giveaway (status, pool_amount) VALUES (?, ?)',
-        ('active', 15.0)
-    )
-    conn.commit()
-    giveaway_id = cursor.lastrowid
-    conn.close()
-    return giveaway_id
+    try:
+        cursor.execute(
+            'INSERT INTO giveaway (status, pool_amount, duration_hours) VALUES (?, ?, ?)',
+            ('active', pool_amount, duration_hours)
+        )
+        conn.commit()
+        giveaway_id = cursor.lastrowid
+        conn.close()
+        return giveaway_id
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise e
 
 def join_giveaway(giveaway_id, user_id, tickets_spent):
     """User joins giveaway (manual tickets) — returns (success, message)
