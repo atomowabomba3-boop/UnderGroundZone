@@ -2,44 +2,17 @@ import random
 import json
 from database import (
     get_db_connection, get_giveaway_status, end_giveaway,
-    join_giveaway, join_giveaway_auto, get_user_by_id
+    join_giveaway, get_user_by_id
 )
 
 class GiveawayManager:
     """Manages giveaway operations"""
-    
-    GHOST_THRESHOLD = 15.0  # $15 minimum to start giveaway
     POOL_CONTRIBUTION_RATE = 0.8  # 80% of purchases go to pool
     
     @staticmethod
     def check_and_start_giveaway():
-        """Check if giveaway pool reached threshold and start if needed"""
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Check if there's an active giveaway
-        cursor.execute('SELECT * FROM giveaway WHERE status = "active"')
-        active = cursor.fetchone()
-        
-        if active:
-            conn.close()
-            return False
-        
-        # Check pool amount
-        cursor.execute('SELECT pool_amount FROM giveaway ORDER BY created_at DESC LIMIT 1')
-        last_giveaway = cursor.fetchone()
-        
-        if last_giveaway and last_giveaway['pool_amount'] >= GiveawayManager.GHOST_THRESHOLD:
-            # Create new active giveaway
-            cursor.execute(
-                'INSERT INTO giveaway (status, pool_amount) VALUES (?, ?)',
-                ('active', last_giveaway['pool_amount'])
-            )
-            conn.commit()
-            conn.close()
-            return True
-        
-        conn.close()
+        """Automatic start disabled: giveaways must be created from admin panel."""
+        # For now we don't auto-start giveaways based on pool. Admin must create giveaways.
         return False
     
     @staticmethod
@@ -72,7 +45,7 @@ class GiveawayManager:
     
     @staticmethod
     def user_join_giveaway(user_id, tickets_to_spend):
-        """User joins current giveaway. tickets_to_spend == None -> auto-spend all except 1"""
+        """User joins current giveaway. Users must spend ALL their tickets to join."""
         # Get current active giveaway
         giveaway = get_giveaway_status()
         
@@ -84,15 +57,26 @@ class GiveawayManager:
         if not user:
             return False, "User not found"
         
-        # Auto mode: spend all except 1
-        if tickets_to_spend is None:
-            result = join_giveaway_auto(giveaway['id'], user_id)
-            if isinstance(result, tuple):
-                return result
-            return (bool(result), "Successfully joined giveaway (auto-spend)" if result else "Failed to join giveaway")
+        # Enforce spending maximum tickets only
+        user_tickets = int(user.get('tickets', 0) or 0)
+        if user_tickets <= 0:
+            return False, "No tickets available"
         
-        # Manual mode: spend specified tickets
-        if user['tickets'] < tickets_to_spend:
+        # If tickets_to_spend is None, treat as intent to spend all tickets
+        if tickets_to_spend is None:
+            tickets_to_spend = user_tickets
+        
+        # Only allow spending exactly all tickets (maximum)
+        try:
+            tickets_to_spend = int(tickets_to_spend)
+        except (ValueError, TypeError):
+            return False, "Invalid tickets_to_spend"
+        
+        if tickets_to_spend != user_tickets:
+            return False, "You must spend all your tickets to join"
+        
+        # Manual mode: spend specified tickets (which must equal user's tickets now)
+        if user_tickets < tickets_to_spend:
             return False, "Insufficient tickets"
         
         result = join_giveaway(giveaway['id'], user_id, tickets_to_spend)
