@@ -315,6 +315,7 @@ def purchase_ebook(user_id, ebook_id, amount_usd):
     finally:
         conn.close()
 
+
 def get_giveaway_status():
     """Get current giveaway status"""
     conn = get_db_connection()
@@ -327,12 +328,12 @@ def get_giveaway_status():
     return dict(giveaway) if giveaway else None
 
 def create_giveaway():
-    """Create new giveaway"""
+    """Create new giveaway (defaults to starting pool of $15.00)"""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         'INSERT INTO giveaway (status, pool_amount) VALUES (?, ?)',
-        ('active', 0.0)
+        ('active', 15.0)
     )
     conn.commit()
     giveaway_id = cursor.lastrowid
