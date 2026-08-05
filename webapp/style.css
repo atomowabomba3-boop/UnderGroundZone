@@ -291,15 +291,36 @@ body {
     transform: translateY(-4px);
 }
 
+/* Allow the cover to size based on the image's natural aspect ratio so pictures are not cropped.
+   Images will scale to the card width while preserving their proportions. */
 .ebook-cover {
     width: 100%;
-    height: 180px;
+    /* remove fixed height so layout adapts to image proportions */
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 48px;
     position: relative;
+    padding: 8px;
+}
+
+/* Image inside the cover: scale to width, keep aspect ratio, and avoid cropping */
+.ebook-cover-img {
+    width: 100%;
+    height: auto;
+    max-height: 420px; /* cap extreme heights to avoid very tall cards */
+    object-fit: contain;
+    display: block;
+}
+
+/* Placeholder/no-image box keeps a sensible minimum height */
+.ebook-noimg {
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
 }
 
 .ebook-cover.owned::after {
