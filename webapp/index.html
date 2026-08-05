@@ -172,11 +172,18 @@
                         <div class="admin-row">
                             <label for="admin-giveaway-hours">Duration (hours):</label>
                             <input type="number" id="admin-giveaway-hours" class="referral-input" placeholder="0.01 - 1000" min="0.01" max="1000" step="0.01" value="24">
+                            <small style="color: var(--text-secondary); font-size: 12px;">0.01 hours = 36 seconds</small>
                         </div>
                         
                         <div class="admin-row">
                             <label for="admin-giveaway-amount">Prize Pool ($):</label>
                             <input type="number" id="admin-giveaway-amount" class="referral-input" placeholder="0.01 - 1000" min="0.01" max="1000" step="0.01" value="15">
+                        </div>
+                        
+                        <div class="admin-row">
+                            <label for="admin-giveaway-winners">Number of Winners:</label>
+                            <input type="number" id="admin-giveaway-winners" class="referral-input" placeholder="1 - 100" min="1" max="100" step="1" value="1">
+                            <small style="color: var(--text-secondary); font-size: 12px;">Prize will be split equally among winners</small>
                         </div>
                         
                         <button class="btn btn-success" style="width: 100%; margin-top: 12px;" onclick="createAndStartGiveaway()">Create & Start Giveaway</button>
