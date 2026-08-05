@@ -6,7 +6,8 @@ import requests
 
 from database import (
     init_db, create_user, get_user, get_user_by_id, update_user_tickets,
-    add_referral, get_ranking, get_all_ebooks, purchase_ebook, create_giveaway
+    add_referral, get_ranking, get_all_ebooks, purchase_ebook, create_giveaway,
+    get_unconfirmed_payout_for_user, confirm_payout
 )
 from giveaway import GiveawayManager
 from utils import (
@@ -339,6 +340,67 @@ def giveaway_status():
         'status': 'success',
         'giveaway': giveaway
     }), 200
+
+# GET unconfirmed payout for current user
+@app.route('/giveaway/payout', methods=['GET'])
+@require_telegram_id
+def giveaway_payout(telegram_id):
+    user = get_user(telegram_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    payout = get_unconfirmed_payout_for_user(user['id'])
+    currencies = ['BTC','ETH','USDT','USDC']
+    return jsonify({'status':'success','payout': payout, 'currencies': currencies}), 200
+
+# POST confirm payout address
+@app.route('/giveaway/payout/confirm', methods=['POST'])
+@require_telegram_id
+def giveaway_payout_confirm(telegram_id):
+    data = request.json or {}
+    currency = data.get('currency'); address = data.get('address')
+    if not currency or not address:
+        return jsonify({'error':'Missing currency or address'}), 400
+    allowed = {'BTC','ETH','USDT','USDC'}
+    if currency not in allowed:
+        return jsonify({'error':'Unsupported currency'}), 400
+    user = get_user(telegram_id)
+    if not user:
+        return jsonify({'error':'User not found'}), 404
+    payout = get_unconfirmed_payout_for_user(user['id'])
+    if not payout:
+        return jsonify({'error':'No unconfirmed payout found'}), 400
+    success, err = confirm_payout(payout['giveaway_id'], user['id'], currency, address)
+    if success:
+        return jsonify({'status':'success','message':'Payout confirmed'}), 200
+    return jsonify({'error':'Failed to confirm payout','detail':err}), 500
+
+# Admin: add tickets to a user (minimal, admin-only)
+@app.route('/admin/add-tickets', methods=['POST'])
+def admin_add_tickets():
+    data = request.json or {}
+    admin_id = data.get('admin_telegram_id') or request.headers.get('X-Admin-Telegram')
+    if admin_id is None:
+        return jsonify({'error':'Missing admin id'}), 403
+    try:
+        admin_id = int(admin_id)
+    except (ValueError,TypeError):
+        return jsonify({'error':'Invalid admin id'}), 403
+    if admin_id != ADMIN_TELEGRAM_ID:
+        return jsonify({'error':'Forbidden: not an admin'}), 403
+    target = data.get('target_telegram_id', admin_id)
+    amt = int(data.get('amount', 1))
+    try:
+        target = int(target)
+    except (ValueError,TypeError):
+        return jsonify({'error':'Invalid target id'}), 400
+    u = get_user(target)
+    if not u:
+        return jsonify({'error':'User not found'}), 404
+    # update tickets
+    success = update_user_tickets(u['id'], (u.get('tickets') or 0) + amt)
+    if success:
+        return jsonify({'status':'success','message':f'Added {amt} ticket(s) to {target}'}), 200
+    return jsonify({'error':'Failed to add tickets'}), 500
 
 @app.route('/giveaway/join', methods=['POST'])
 @require_telegram_id
