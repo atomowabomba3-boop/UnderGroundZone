@@ -167,22 +167,30 @@ def start():
         return jsonify({'error': 'Internal server error', 'detail': str(e)}), 500
 
 @app.route('/me', methods=['GET'])
-@require_telegram_id
-def get_me(telegram_id):
-    """Get current user data"""
+def get_me():
+    """Get current user data (optional telegram_id for anonymous web clients)"""
+    # Try to read telegram_id from query string (e.g. /me?telegram_id=123)
+    telegram_id = request.args.get('telegram_id')
+    if telegram_id is None:
+        # No id -> anonymous view, return user null so frontend can load public content
+        return jsonify({'status': 'success', 'user': None}), 200
+
+    try:
+        telegram_id = int(telegram_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid telegram_id'}), 400
+
     user = get_user(telegram_id)
-    
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
+
     user_resp = format_user_response(user)
     user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
-    # include is_admin flag for frontend
     try:
         user_resp['is_admin'] = (int(telegram_id) == ADMIN_TELEGRAM_ID)
     except Exception:
         user_resp['is_admin'] = False
-    
+
     return jsonify({
         'status': 'success',
         'user': user_resp
