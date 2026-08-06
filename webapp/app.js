@@ -2,17 +2,27 @@
 const API_BASE_URL = window.__API_BASE__ || '';
 const FRONTEND_ADMIN_TELEGRAM_ID = 8998575936; // matches backend constant
 
-async function apiCall(path, method='GET', body=null) {
+// Add a timeout to prevent fetch from hanging indefinitely
+async function apiCall(path, method='GET', body=null, timeoutMs=7000) {
   const url = (path.startsWith('http') ? path : `${API_BASE_URL}${path}`);
-  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  const opts = { method, headers: { 'Content-Type': 'application/json' }, signal: controller.signal };
   if (body != null) opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  if (!res.ok) {
-    let err;
-    try { err = await res.json(); } catch(e) { err = { error: res.statusText }; }
-    throw err;
+  try {
+    const res = await fetch(url, opts);
+    clearTimeout(id);
+    if (!res.ok) {
+      let err;
+      try { err = await res.json(); } catch(e) { err = { error: res.statusText }; }
+      throw err;
+    }
+    try { return await res.json(); } catch(e) { return null; }
+  } catch (e) {
+    clearTimeout(id);
+    if (e.name === 'AbortError') throw { error: 'Network timeout' };
+    throw { error: e.message || 'Network error' };
   }
-  try { return await res.json(); } catch(e) { return null; }
 }
 
 function showToast(msg, type='info') {
@@ -58,9 +68,10 @@ async function getUser() {
     }
   } catch (err) {
     console.warn('getUser failed', err);
+    showToast((err && err.error) || 'Unable to fetch user', 'error');
   }
 
-  // ensure public tabs still load when not logged in
+  // ensure public tabs still load when not logged in or on error
   try {
     if (typeof loadGiveawayStatus === 'function') loadGiveawayStatus();
     if (typeof loadEbooks === 'function') loadEbooks();
