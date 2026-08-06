@@ -1,5 +1,6 @@
 // Minimal frontend helpers: API base, apiCall, loading/toast, current user loader
 const API_BASE_URL = window.__API_BASE__ || '';
+const FRONTEND_ADMIN_TELEGRAM_ID = 8998575936; // matches backend constant
 
 async function apiCall(path, method='GET', body=null) {
   const url = (path.startsWith('http') ? path : `${API_BASE_URL}${path}`);
@@ -35,13 +36,24 @@ async function getUser() {
       currentUser = res.user;
       const t = document.getElementById('user-tickets');
       if (t) t.textContent = `🎫 ${currentUser.tickets || 0}`;
-      // show admin tab if user is admin
-      if (currentUser.is_admin) {
+      // update home stats
+      const ht = document.getElementById('home-tickets'); if(ht) ht.textContent = currentUser.tickets || 0;
+      const hr = document.getElementById('home-referrals'); if(hr) hr.textContent = currentUser.referrals_count || 0;
+      const he = document.getElementById('home-ebooks'); if(he) he.textContent = (currentUser.ebooks_owned || []).length || 0;
+
+      // show admin tab if user is admin (backend may not include is_admin)
+      if (currentUser.is_admin || Number(currentUser.telegram_id) === FRONTEND_ADMIN_TELEGRAM_ID) {
         const a = document.getElementById('nav-admin-tab');
         if (a) a.style.display = '';
       }
+
+      // referral link
+      try { setupReferralLink(); } catch(e) { console.debug('referral setup failed', e); }
+
+      // load other content
       if (typeof loadGiveawayStatus === 'function') loadGiveawayStatus();
       if (typeof loadEbooks === 'function') loadEbooks();
+      if (typeof loadRanking === 'function') loadRanking();
       if (typeof checkPayoutForUser === 'function') checkPayoutForUser();
     }
   } catch (err) {
@@ -88,8 +100,8 @@ async function confirmPayout(){
 async function adminAddTickets(){
   try{
     showLoading(true);
-    const payload = { admin_telegram_id: ADMIN_TELEGRAM_ID, target_telegram_id: ADMIN_TELEGRAM_ID, amount: 1 };
-    const options = { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Telegram': String(ADMIN_TELEGRAM_ID) }, body: JSON.stringify(payload) };
+    const payload = { admin_telegram_id: FRONTEND_ADMIN_TELEGRAM_ID, target_telegram_id: FRONTEND_ADMIN_TELEGRAM_ID, amount: 1 };
+    const options = { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Telegram': String(FRONTEND_ADMIN_TELEGRAM_ID) }, body: JSON.stringify(payload) };
     const resp = await fetch(`${API_BASE_URL}/admin/add-tickets`, options);
     const data = await resp.json();
     if(!resp.ok){ console.error('Admin add-tickets failed', data); showToast(data.error || data.message || 'Failed to add ticket','error'); return; }
@@ -131,3 +143,89 @@ async function adminAddTickets(){
     console.error('setupTabs error', err);
   }
 })();
+
+// ==================== CONTENT LOADERS ====================
+// Load eBooks from API and render
+async function loadEbooks(){
+  const el = document.getElementById('ebooks-list');
+  if(!el) return;
+  el.innerHTML = '<div class="loading">Loading eBooks...</div>';
+  try{
+    const res = await apiCall('/ebooks');
+    if(!res || !res.ebooks) { el.innerHTML = '<div class="loading">No eBooks found</div>'; return; }
+    const books = res.ebooks;
+    if(books.length === 0){ el.innerHTML = '<div class="loading">No eBooks available</div>'; return; }
+    el.innerHTML = '';
+    books.forEach(b => {
+      const card = document.createElement('div'); card.className = 'ebook-card';
+      const cover = document.createElement('div'); cover.className = 'ebook-cover';
+      if(b.cover_image){
+        const img = document.createElement('img'); img.src = b.cover_image; img.alt = b.name; img.style.width='100%'; img.style.borderRadius='8px'; cover.appendChild(img);
+      } else { cover.textContent = '📘'; }
+      const title = document.createElement('div'); title.className = 'ebook-title'; title.textContent = b.name || 'Untitled';
+      const price = document.createElement('div'); price.className = 'ebook-price'; price.textContent = `$${b.price || '0.00'}`;
+      const tickets = document.createElement('div'); tickets.className = 'ebook-tickets'; tickets.textContent = `${b.tickets_reward || 0} tickets`;
+      const btn = document.createElement('a'); btn.className = 'btn-buy'; btn.textContent = 'Download';
+      btn.href = b.file_path ? `${API_BASE_URL}/download/${encodeURIComponent(b.file_path)}` : '#';
+      btn.target = '_blank';
+      card.appendChild(cover); card.appendChild(title); card.appendChild(price); card.appendChild(tickets); card.appendChild(btn);
+      el.appendChild(card);
+    });
+  }catch(e){ console.error('loadEbooks error', e); el.innerHTML = '<div class="loading">Failed to load eBooks</div>'; }
+}
+
+// Setup referral link copy and values
+function setupReferralLink(){
+  const input = document.getElementById('referral-link');
+  const btn = document.getElementById('copy-referral-btn');
+  if(!input || !btn) return;
+  // prefer backend-provided referral_link
+  let link = (currentUser && currentUser.referral_link) || input.value || '';
+  // normalize: if link contains '/?ref=' or 'ref:' keep it; otherwise just use as-is
+  input.value = link;
+  btn.addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(input.value);
+      showToast('Referral link copied');
+    }catch(e){
+      console.error('Clipboard copy failed', e);
+      // fallback select
+      input.select(); document.execCommand('copy'); showToast('Referral link copied (fallback)');
+    }
+  });
+}
+
+// Load giveaway status
+async function loadGiveawayStatus(){
+  const el = document.getElementById('giveaway-content');
+  if(!el) return;
+  el.innerHTML = '<div class="loading">Loading giveaway status...</div>';
+  try{
+    const res = await apiCall('/giveaway/status');
+    if(!res || !res.giveaway){ el.innerHTML = '<div class="loading">No active giveaway</div>'; return; }
+    const g = res.giveaway;
+    // render basic info
+    el.innerHTML = '';
+    const pool = document.createElement('div'); pool.className = 'giveaway-pool'; pool.innerHTML = `<h3>Pool: $${g.pool_amount || 0}</h3>`;
+    const status = document.createElement('div'); status.className='giveaway-status'; status.textContent = `Status: ${g.status || 'unknown'}`;
+    const ends = document.createElement('div'); ends.className='giveaway-ends'; ends.textContent = `Ends at: ${g.ends_at || 'N/A'}`;
+    el.appendChild(pool); el.appendChild(status); el.appendChild(ends);
+  }catch(e){ console.error('loadGiveawayStatus error', e); el.innerHTML = '<div class="loading">Failed to load giveaway</div>'; }
+}
+
+// Load ranking
+async function loadRanking(){
+  const el = document.getElementById('ranking-list');
+  if(!el) return;
+  el.innerHTML = '<div class="loading">Loading ranking...</div>';
+  try{
+    const res = await apiCall('/ranking');
+    if(!res || !res.ranking || res.ranking.length === 0){ el.innerHTML = '<div class="loading">No ranking data</div>'; return; }
+    el.innerHTML = '';
+    res.ranking.forEach(r => {
+      const row = document.createElement('div'); row.className = 'ranking-row';
+      row.innerHTML = `<div class="rank-pos">${r.position}</div><div class="rank-id">${r.telegram_id}</div><div class="rank-ref">${r.referrals} refs</div><div class="rank-tickets">${r.tickets} tix</div>`;
+      el.appendChild(row);
+    });
+  }catch(e){ console.error('loadRanking error', e); el.innerHTML = '<div class="loading">Failed to load ranking</div>'; }
+}
