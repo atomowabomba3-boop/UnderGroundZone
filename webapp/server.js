@@ -59,11 +59,15 @@ async function proxyRequest(req, res) {
 
     const target = BACKEND_URL + req.url;
 
+    // Read request body
     const bodyBuf = await getRequestBody(req);
 
     // Copy headers but avoid host
     const headers = Object.assign({}, req.headers);
     delete headers.host;
+
+    // Log proxy activity for debugging
+    console.log('Proxy ->', target, 'method=', req.method, 'headers=', Object.keys(headers));
 
     // If body is empty, don't pass it to fetch
     const fetchOptions = {
@@ -81,12 +85,19 @@ async function proxyRequest(req, res) {
     // allow CORS
     outHeaders['access-control-allow-origin'] = '*';
 
+    console.log('Backend responded', pres.status);
+    if (pres.status >= 400) {
+      // try to capture small snippet of error body
+      const txt = await pres.text().catch(() => null);
+      console.error('Backend error body snippet:', (txt && txt.slice(0,300)) || '<no body>');
+    }
+
     res.writeHead(pres.status, outHeaders);
     // stream body
     const arrayBuffer = await pres.arrayBuffer();
     res.end(Buffer.from(arrayBuffer));
   } catch (e) {
-    console.error('Proxy error', e);
+    console.error('Proxy error', e && e.stack ? e.stack : e);
     res.writeHead(502, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
     res.end('Bad gateway');
   }
@@ -116,7 +127,7 @@ const server = http.createServer(async (req, res) => {
       });
     });
   } catch (e) {
-    console.error('Server error', e);
+    console.error('Server error', e && e.stack ? e.stack : e);
     res.statusCode = 500; res.setHeader('Content-Type','text/plain'); res.end('Server error');
   }
 });
