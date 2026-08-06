@@ -41,3 +41,37 @@ async function adminAddTickets(){
     await getUser();
   }catch(e){ console.error('adminAddTickets error', e); showToast('Failed to add ticket','error'); }finally{ showLoading(false); }
 }
+
+// --- TAB SWITCHING: add missing navigation handlers ---
+(function setupTabs(){
+  try {
+    const tabs = Array.from(document.querySelectorAll('.nav-tab'));
+    const contents = Array.from(document.querySelectorAll('.tab-content'));
+
+    function showTab(tabName){
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+
+      const btn = tabs.find(t => t.dataset && t.dataset.tab === tabName);
+      if(btn) btn.classList.add('active');
+
+      const section = document.getElementById(`${tabName}-tab`);
+      if(section) section.classList.add('active');
+    }
+
+    tabs.forEach(t => {
+      t.addEventListener('click', (e) => {
+        const name = t.dataset && t.dataset.tab;
+        if(name) {
+          showTab(name);
+        }
+      });
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const initial = params.get('tab') || (tabs[0] && tabs[0].dataset.tab) || 'home';
+    showTab(initial);
+  } catch (err) {
+    console.error('setupTabs error', err);
+  }
+})();
