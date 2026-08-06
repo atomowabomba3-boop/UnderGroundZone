@@ -1,3 +1,59 @@
+// Minimal frontend helpers: API base, apiCall, loading/toast, current user loader
+const API_BASE_URL = window.__API_BASE__ || '';
+
+async function apiCall(path, method='GET', body=null) {
+  const url = (path.startsWith('http') ? path : `${API_BASE_URL}${path}`);
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body != null) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    let err;
+    try { err = await res.json(); } catch(e) { err = { error: res.statusText }; }
+    throw err;
+  }
+  try { return await res.json(); } catch(e) { return null; }
+}
+
+function showToast(msg, type='info') {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  setTimeout(()=>{ el.classList.remove('show'); }, 3000);
+}
+function showLoading(on=true) {
+  const l = document.getElementById('loading-overlay');
+  if (l) l.style.display = on ? 'flex' : 'none';
+}
+
+let currentUser = null;
+
+async function getUser() {
+  try {
+    const res = await apiCall('/me');
+    if (res && res.user) {
+      currentUser = res.user;
+      const t = document.getElementById('user-tickets');
+      if (t) t.textContent = `🎫 ${currentUser.tickets || 0}`;
+      // show admin tab if user is admin
+      if (currentUser.is_admin) {
+        const a = document.getElementById('nav-admin-tab');
+        if (a) a.style.display = '';
+      }
+      if (typeof loadGiveawayStatus === 'function') loadGiveawayStatus();
+      if (typeof loadEbooks === 'function') loadEbooks();
+      if (typeof checkPayoutForUser === 'function') checkPayoutForUser();
+    }
+  } catch (err) {
+    console.warn('getUser failed', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // kick off initial data load
+  getUser().catch(()=>{});
+});
+
 // Payout & admin helpers
 async function checkPayoutForUser(){
   if(!currentUser) return;
