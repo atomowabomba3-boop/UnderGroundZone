@@ -59,6 +59,13 @@ async function getUser() {
   } catch (err) {
     console.warn('getUser failed', err);
   }
+
+  // ensure public tabs still load when not logged in
+  try {
+    if (typeof loadGiveawayStatus === 'function') loadGiveawayStatus();
+    if (typeof loadEbooks === 'function') loadEbooks();
+    if (typeof loadRanking === 'function') loadRanking();
+  } catch(e) { console.debug('initial content load failed', e); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
