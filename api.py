@@ -42,7 +42,8 @@ def get_frontend_base():
 # Telegram passes start_param that we can parse.
 # Example: https://t.me/udrgroundbot?start=ref:48485992
 def build_referral_link(telegram_id):
-    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME') or 'UdrgroundBot'
+    # Prefer explicit env var; default to the expected bot username (lowercase)
+    bot_username = os.getenv('BOT_USERNAME') or os.getenv('TELEGRAM_BOT_USERNAME') or 'udrgroundbot'
     if bot_username:
         try:
             return f"https://t.me/{bot_username}?start=ref:{int(telegram_id)}"
@@ -149,6 +150,11 @@ def start():
         # Build response and include referral link for this user
         user_resp = format_user_response(user)
         user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
+        # expose admin flag so frontend can show admin panel
+        try:
+            user_resp['is_admin'] = (int(telegram_id) == ADMIN_TELEGRAM_ID)
+        except Exception:
+            user_resp['is_admin'] = False
         
         return jsonify({
             'status': 'success',
@@ -171,6 +177,11 @@ def get_me(telegram_id):
     
     user_resp = format_user_response(user)
     user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
+    # include is_admin flag for frontend
+    try:
+        user_resp['is_admin'] = (int(telegram_id) == ADMIN_TELEGRAM_ID)
+    except Exception:
+        user_resp['is_admin'] = False
     
     return jsonify({
         'status': 'success',
@@ -321,6 +332,10 @@ def buy_ebook_webhook():
         updated_user = get_user(telegram_id)
         user_resp = format_user_response(updated_user)
         user_resp['referral_link'] = build_referral_link(user_resp.get('telegram_id'))
+        try:
+            user_resp['is_admin'] = (int(telegram_id) == ADMIN_TELEGRAM_ID)
+        except Exception:
+            user_resp['is_admin'] = False
         return jsonify({
             'status': 'success',
             'message': 'Ebook purchased successfully',
